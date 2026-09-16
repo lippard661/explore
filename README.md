@@ -46,6 +46,17 @@ helpers and alternative PL/I versions of the basic helpers. The data
 files are likewise identical between the Multics/install and
 perl/share directories.
 
+The perl version can be installed on OpenBSD using pkg_add and the
+p5-Explore-1.0.tgz package in this repo, which is a Legion of Dynamic
+Discord-signed package. The same package can be installed on macOS or
+Linux using my install.pl script found in this repo:
+
+https://github.com/lippard661/distribute
+
+The public key for the signing key for the package is:
+
+https://www.discord.org/lippard/software/discord.org-2026-pkg.pub
+
 ## Artifacts
 
 The artifacts/ directory contains historical materials: the 6.0 game
