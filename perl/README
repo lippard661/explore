@@ -1,0 +1,83 @@
+Explore - the reconstructed 1980 Multics adventure game
+=======================================================
+
+"Explore" is a text adventure written for Multics in 1979-1980 by Jim
+Lippard.  Its source was lost and later reconstructed from line-printer
+output; this distribution runs that authentic reconstructed BASIC source,
+unmodified, on the MBasic interpreter (a separate distribution), so it plays
+on any modern Unix with Perl.
+
+The game version is 5.3; this Perl distribution is version 1.0.
+
+REQUIREMENTS
+
+Perl 5.8+ and the MBasic distribution (the Multics BASIC interpreter).
+Install MBasic first.
+
+INSTALLATION (the Perl code)
+
+    perl Makefile.PL
+    make
+    make test
+    make install
+
+This installs the Explore::Builtins module and the "explore" program to the
+standard system locations.
+
+INSTALLATION (the game data)
+
+The Makefile.PL does NOT install the game data files (it installs only the
+Perl code).  Place the contents of share/ into the game's share directory --
+by default /usr/local/share/explore:
+
+    mkdir -p /usr/local/share/explore
+    cp share/* /usr/local/share/explore/
+
+(On the packaged OpenBSD version this is done by the port.)
+
+PLAYING
+
+    explore
+
+With no arguments the game uses these defaults:
+
+    read-only content : /usr/local/share/explore   (--share)
+    read-write data   : /var/db/explore            (--var)
+
+On first run it auto-seeds /var/db/explore from the sample hours.data and
+winners.data in the share directory, so wins and sorcerer edits persist.  If
+/var/db/explore cannot be written, it falls back to read-only single-player.
+
+Override the locations with --share, --var, --basic, --helpers, --root, or the
+matching EXPLORE_* environment variables; run "explore --help" for the list.
+The unmodified BASIC uses Multics pathnames like ">site>explore_dir>..."; the
+runner maps ">site>explore_dir" to the share directory automatically, and you
+can add further mappings with --prefix 'MULTICS=/unix'.
+
+DATA FILE FORMATS
+
+hours.data (in the share dir, seeded to the var dir):
+
+    line 1        the sorcerer word, rot13-encoded (the sample is the rot13
+                  of "hello"; change it for your site)
+    lines 2-7     six "HHMM,HHMM" open/close windows: weekday x2, weekend x2,
+                  holiday x2 (the sample is always-open, 0000-2359)
+    next line     "9999,<name>,<MM/DD>,<occasion>"  (limit and next holiday)
+    last line(s)  one or more message-of-the-day / news lines
+
+winners.data: lines of "MM/DD/YY,<name>,(<score> points)".
+
+MULTIPLAYER
+
+Multiplayer requires the shared registry/communication files in the var
+directory and is enabled per player with the in-game "multip" mode.  See the
+game's own help ("help") and the historical documentation for details.
+
+LICENSE
+
+BSD 3-Clause; see the LICENSE file.  The game and its reconstruction are the
+work of Jim Lippard.
+
+AUTHOR
+
+Jim Lippard

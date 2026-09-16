@@ -1,0 +1,11 @@
+Revision history for Explore (Perl distribution)
+
+1.0  2026-09-15
+     - Initial release of the Perl distribution.
+     - Runs the reconstructed 1980 Multics game "Explore" (game version 5.3)
+       on the MBasic interpreter, executing the authentic BASIC source
+       unmodified.
+     - Provides Explore::Builtins (the native helpers and Multics command
+       stubs, and Multics-to-Unix path translation) and the "explore" program.
+     - Includes the game data (share/) and historical artifacts (the original
+       transcribed BASIC and the 6.0 database).
