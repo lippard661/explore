@@ -32,6 +32,7 @@ by default /usr/local/share/explore:
 
     mkdir -p /usr/local/share/explore
     cp share/* /usr/local/share/explore/
+    cp examples/explore.rwdir /usr/local/share/explore/
 
 (On the packaged OpenBSD version this is done by the port.)
 
