@@ -27,14 +27,29 @@ standard system locations.
 INSTALLATION (the game data)
 
 The Makefile.PL does NOT install the game data files (it installs only the
-Perl code).  Place the contents of share/ into the game's share directory --
-by default /usr/local/share/explore:
+Perl code).  Place the game data as follows -- by default under
+/usr/local/share/explore:
 
     mkdir -p /usr/local/share/explore
-    cp share/* /usr/local/share/explore/
+    cp share/*.basic share/*.data share/*.help \
+       share/hours.data share/winners.data /usr/local/share/explore/
+
+The read-only content (the BASIC program and helpers, explore.data,
+explore.help, and the hours.data/winners.data masters) lives there.
+
+The admin-editable configuration file, explore.rwdir, ships as a sample in the
+examples/ directory.  Copy it into the game's share directory and edit it for
+your site:
+
     cp examples/explore.rwdir /usr/local/share/explore/
 
-(On the packaged OpenBSD version this is done by the port.)
+Its first line is the read-write data directory (default /var/db/explore) and
+its second line is "^multip" (single-player) or "multip" (multiplayer); a
+single line "none" forces read-only play.
+
+(On the packaged OpenBSD version the port installs the read-only content, seeds
+explore.rwdir from the sample with @sample so your edits survive upgrades, and
+seeds hours.data/winners.data into /var/db/explore.)
 
 PLAYING
 
@@ -70,9 +85,72 @@ winners.data: lines of "MM/DD/YY,<name>,(<score> points)".
 
 MULTIPLAYER
 
-Multiplayer requires the shared registry/communication files in the var
-directory and is enabled per player with the in-game "multip" mode.  See the
-game's own help ("help") and the historical documentation for details.
+Multiplayer is configured through the explore.rwdir file (installed to
+/usr/local/share/explore/explore.rwdir).  It has up to two lines:
+
+    line 1   the read-write data directory (default /var/db/explore)
+    line 2   "multip" to enable multiplayer, or "^multip" for single-player
+
+The default second line is "^multip" (single-player).  To enable multiplayer
+site-wide, change the file to:
+
+    /var/db/explore
+    multip
+
+A single line containing "none" forces read-only play (no wins recorded, no
+multiplayer), which needs no writable directory.
+
+With multiplayer enabled, players see who else is exploring (the "whom"
+command), can message one another, and a designated sorcerer can broadcast and
+manage the game.  All players share the registry, communication, and lock
+files that the game creates at run time in the writable directory, so that
+directory must be writable by every player (see PERMISSIONS below).  The
+sorcerer word is set, rot13-encoded, on the first line of hours.data.
+
+PERMISSIONS
+
+The writable data directory (default /var/db/explore) holds hours.data,
+winners.data, and -- when multiplayer is enabled -- the registry, message, and
+lock files the game creates at run time.  Because the game runs as the player,
+every player needs to read, write, and create files there.
+
+By default the package installs /var/db/explore world-writable (mode 1777,
+sticky) and its data files world-writable (mode 0666), so that any user on the
+system can play, record wins, and use multiplayer with no further setup.  This
+mirrors the game's original Multics behavior, where per-file access control let
+any player update the shared files.
+
+The Unix tradeoff is coarser: a world-writable directory lets any user create
+or delete files in it, and world-writable data files can be truncated or
+overwritten, not just appended to.  Two optional, recommended hardening steps
+(NOT done by the package -- apply them yourself if you want tighter control):
+
+  1. Restrict play to a group instead of the whole system.  Choose or create a
+     group for players (OpenBSD already has a "games" group), give the writable
+     area to it, make the directory setgid so run-time files inherit the group,
+     and add your players to the group:
+
+         chgrp -R games /var/db/explore
+         chmod 2775 /var/db/explore
+         chmod 0664 /var/db/explore/*.data
+         usermod -G games alice          # for each player
+
+     Then only members of that group -- not every user -- can play and alter
+     the shared files.
+
+  2. Make winners.data append-only.  The game only ever appends to
+     winners.data (it never rewrites or truncates it), so the hall of fame can
+     be protected so that it grows but cannot be altered or erased:
+
+         chflags uappnd /var/db/explore/winners.data
+
+     (Do NOT do this to hours.data -- the sorcerer rewrites it in place.)
+
+ARTIFACTS
+
+Historical materials -- the 6.0 game database and the original transcribed
+BASIC source -- are preserved for reference in the project's source
+repository.  They are not part of this distribution or the installed package.
 
 LICENSE
 
