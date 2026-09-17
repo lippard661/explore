@@ -114,37 +114,54 @@ winners.data, and -- when multiplayer is enabled -- the registry, message, and
 lock files the game creates at run time.  Because the game runs as the player,
 every player needs to read, write, and create files there.
 
-By default the package installs /var/db/explore world-writable (mode 1777,
-sticky) and its data files world-writable (mode 0666), so that any user on the
-system can play, record wins, and use multiplayer with no further setup.  This
-mirrors the game's original Multics behavior, where per-file access control let
-any player update the shared files.
+The package installs the writable directory and its data files GROUP-writable
+(mode 2775 on the directory, setgid so run-time files inherit the group; 0664
+on the data files), NOT world-writable.  Access is therefore limited to the
+group that owns these files, and you must make sure that group is one your
+players belong to.
 
-The Unix tradeoff is coarser: a world-writable directory lets any user create
-or delete files in it, and world-writable data files can be truncated or
-overwritten, not just appended to.  Two optional, recommended hardening steps
-(NOT done by the package -- apply them yourself if you want tighter control):
+  A note on the group across platforms:
 
-  1. Restrict play to a group instead of the whole system.  Choose or create a
-     group for players (OpenBSD already has a "games" group), give the writable
-     area to it, make the directory setgid so run-time files inherit the group,
-     and add your players to the group:
+    OpenBSD  ships a "games" group (gid 13); the package uses it by default,
+             so on OpenBSD the files are owned by group "games".
+    Linux    MAY have a "games" group (often gid 60), but it varies by
+             distribution and your players may not be in it.
+    macOS    has no "games" group; the installer will fall back to a default
+             group (typically wheel/gid 0), which ordinary players are NOT in.
 
-         chgrp -R games /var/db/explore
-         chmod 2775 /var/db/explore
-         chmod 0664 /var/db/explore/*.data
-         usermod -G games alice          # for each player
+  So on macOS -- and on Linux unless your players are already in the packaged
+  group -- you MUST assign an appropriate group and add your players to it
+  before multi-user play will work:
 
-     Then only members of that group -- not every user -- can play and alter
-     the shared files.
+      # groupadd explore                 (or use an existing group)
+      chgrp -R explore /var/db/explore
+      chmod 2775 /var/db/explore
+      chmod 0664 /var/db/explore/*.data
+      # add each player to the group (platform-specific):
+      #   OpenBSD:  usermod -G explore alice  (macOS: dseditgroup)
+      #   Linux:          usermod -aG explore alice
 
-  2. Make winners.data append-only.  The game only ever appends to
-     winners.data (it never rewrites or truncates it), so the hall of fame can
-     be protected so that it grows but cannot be altered or erased:
+  For a single-player install (only your own account plays), simply make the
+  directory and files owned by your user and group; no shared group is needed.
 
-         chflags uappnd /var/db/explore/winners.data
+If you would instead prefer that ANY user on the system be able to play, you
+can make the directory world-writable (sticky) yourself:
 
-     (Do NOT do this to hours.data -- the sorcerer rewrites it in place.)
+      chmod 1777 /var/db/explore
+      chmod 0666 /var/db/explore/*.data
+
+This is closer to the game's original Multics behavior, where per-file access
+control let any player update the shared files, but note the tradeoff: any user
+can then also truncate or overwrite the shared data.
+
+Optional extra hardening: make winners.data append-only.  The game only ever
+appends to winners.data (it never rewrites or truncates it), so the hall of
+fame can be protected so that it grows but cannot be altered or erased:
+
+      chflags uappnd /var/db/explore/winners.data     # OpenBSD/BSD/macOS
+      # (on Linux:  chattr +a /var/db/explore/winners.data )
+
+  Do NOT do this to hours.data -- the sorcerer rewrites it in place.
 
 ARTIFACTS
 
