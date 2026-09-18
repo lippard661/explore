@@ -43,13 +43,13 @@ your site:
 
     cp examples/explore.rwdir /usr/local/share/explore/
 
-Its first line is the read-write data directory (default /var/db/explore) and
+Its first line is the read-write data directory (default /var/games/explore) and
 its second line is "^multip" (single-player) or "multip" (multiplayer); a
 single line "none" forces read-only play.
 
 (On the packaged OpenBSD version the port installs the read-only content, seeds
 explore.rwdir from the sample with @sample so your edits survive upgrades, and
-seeds hours.data/winners.data into /var/db/explore.)
+seeds hours.data/winners.data into /var/games/explore.)
 
 PLAYING
 
@@ -58,11 +58,11 @@ PLAYING
 With no arguments the game uses these defaults:
 
     read-only content : /usr/local/share/explore   (--share)
-    read-write data   : /var/db/explore            (--var)
+    read-write data   : /var/games/explore            (--var)
 
-On first run it auto-seeds /var/db/explore from the sample hours.data and
+On first run it auto-seeds /var/games/explore from the sample hours.data and
 winners.data in the share directory, so wins and sorcerer edits persist.  If
-/var/db/explore cannot be written, it falls back to read-only single-player.
+/var/games/explore cannot be written, it falls back to read-only single-player.
 
 Override the locations with --share, --var, --basic, --helpers, --root, or the
 matching EXPLORE_* environment variables; run "explore --help" for the list.
@@ -88,13 +88,13 @@ MULTIPLAYER
 Multiplayer is configured through the explore.rwdir file (installed to
 /usr/local/share/explore/explore.rwdir).  It has up to two lines:
 
-    line 1   the read-write data directory (default /var/db/explore)
+    line 1   the read-write data directory (default /var/games/explore)
     line 2   "multip" to enable multiplayer, or "^multip" for single-player
 
 The default second line is "^multip" (single-player).  To enable multiplayer
 site-wide, change the file to:
 
-    /var/db/explore
+    /var/games/explore
     multip
 
 A single line containing "none" forces read-only play (no wins recorded, no
@@ -109,7 +109,7 @@ sorcerer word is set, rot13-encoded, on the first line of hours.data.
 
 PERMISSIONS
 
-The writable data directory (default /var/db/explore) holds hours.data,
+The writable data directory (default /var/games/explore) holds hours.data,
 winners.data, and -- when multiplayer is enabled -- the registry, message, and
 lock files the game creates at run time.  Because the game runs as the player,
 every player needs to read, write, and create files there.
@@ -134,9 +134,9 @@ players belong to.
   before multi-user play will work:
 
       # groupadd explore                 (or use an existing group)
-      chgrp -R explore /var/db/explore
-      chmod 2775 /var/db/explore
-      chmod 0664 /var/db/explore/*.data
+      chgrp -R explore /var/games/explore
+      chmod 2775 /var/games/explore
+      chmod 0664 /var/games/explore/*.data
       # add each player to the group (platform-specific):
       #   OpenBSD:  usermod -G explore alice  (macOS: dseditgroup)
       #   Linux:          usermod -aG explore alice
@@ -147,8 +147,8 @@ players belong to.
 If you would instead prefer that ANY user on the system be able to play, you
 can make the directory world-writable (sticky) yourself:
 
-      chmod 1777 /var/db/explore
-      chmod 0666 /var/db/explore/*.data
+      chmod 1777 /var/games/explore
+      chmod 0666 /var/games/explore/*.data
 
 This is closer to the game's original Multics behavior, where per-file access
 control let any player update the shared files, but note the tradeoff: any user
@@ -158,8 +158,8 @@ Optional extra hardening: make winners.data append-only.  The game only ever
 appends to winners.data (it never rewrites or truncates it), so the hall of
 fame can be protected so that it grows but cannot be altered or erased:
 
-      chflags uappnd /var/db/explore/winners.data     # OpenBSD/BSD/macOS
-      # (on Linux:  chattr +a /var/db/explore/winners.data )
+      chflags uappnd /var/games/explore/winners.data     # OpenBSD/BSD/macOS
+      # (on Linux:  chattr +a /var/games/explore/winners.data )
 
   Do NOT do this to hours.data -- the sorcerer rewrites it in place.
 

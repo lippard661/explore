@@ -18,7 +18,7 @@ use Explore::Builtins;
 #   to SHAREDIR, and the writable files (named in explore.rwdir) live under
 #   VARDIR.  On a packaged install these default to the FHS locations.
 my $sharedir = $ENV{EXPLORE_SHAREDIR} // '/usr/local/share/explore';
-my $vardir   = $ENV{EXPLORE_VARDIR}   // '/var/db/explore';
+my $vardir   = $ENV{EXPLORE_VARDIR}   // '/var/games/explore';
 my $basic    = $ENV{EXPLORE_BASIC};                  # derived from share if unset
 my $helpers  = $ENV{EXPLORE_HELPERS};                # derived from share if unset
 my $root     = $ENV{EXPLORE_ROOT}     // '/';       # fallback anchor for '>'
@@ -71,10 +71,12 @@ $registry->register('set_acl',  sub { });   # commented out on Multics: no-op
 $registry->register('exec_com', sub { });
 
 # --- auto-seed the writable data directory on first run --------------------
-# The read-only masters of the writable files ship in the share dir; on first
-# run we copy them into the var dir so wins and hours edits persist.  If the
-# var dir cannot be created/written, we fall back to read-only single-player
-# (the game handles a missing/none rwdir gracefully).
+# The read-only masters of the writable files ship as samples (in the
+# examples directory); on first run we copy them into the var dir so wins and
+# hours edits persist.  If the var dir cannot be created/written, we fall back
+# to read-only single-player (the game handles a missing/none rwdir
+# gracefully).  On a packaged install the OpenBSD @sample mechanism will
+# usually have seeded the var dir already, in which case this is a no-op.
 my $writable = _seed_var_dir($sharedir, $vardir);
 
 my $interp = MBasic::Interp->new(
@@ -85,13 +87,14 @@ my $interp = MBasic::Interp->new(
 $interp->load_main($basic);
 $interp->run(pathxlate => \&Explore::Builtins::mult_path);
 
-# copy sample writable files from share -> var if absent; return 1 if the var
-# dir is usable (writable), 0 to fall back to read-only.
+# Copy the sample writable files to the var dir if absent; return 1 if the var
+# dir is usable (writable), 0 to fall back to read-only.  The read-only masters
+# of hours.data/winners.data live in the share dir (they are also read directly
+# in read-only mode); here we copy them to the var dir for writable play.
 sub _seed_var_dir {
     my ($share, $var) = @_;
     require File::Copy;
     unless (-d $var) {
-        # try to create it; ignore failure (fall back to read-only)
         eval { require File::Path; File::Path::make_path($var); 1 } or return 0;
     }
     return 0 unless -w $var;
@@ -135,7 +138,7 @@ subroutines, and the read-only data).  Default F</usr/local/share/explore>.
 =item B<--var> I<DIR>
 
 The read-write data directory (working C<hours.data>, C<winners.data>, and the
-multiplayer files).  Default F</var/db/explore>.
+multiplayer files).  Default F</var/games/explore>.
 
 =item B<--basic> I<FILE>
 
