@@ -114,35 +114,42 @@ winners.data, and -- when multiplayer is enabled -- the registry, message, and
 lock files the game creates at run time.  Because the game runs as the player,
 every player needs to read, write, and create files there.
 
-The package installs the writable directory and its data files GROUP-writable
-(mode 2775 on the directory, setgid so run-time files inherit the group; 0664
-on the data files), NOT world-writable.  Access is therefore limited to the
-group that owns these files, and you must make sure that group is one your
-players belong to.
+The package does NOT create the writable directory; the read-only master
+copies of hours.data and winners.data are installed under the share directory,
+and the writable directory is created on demand:
 
-  A note on the group across platforms:
+  * For single-player play, the game creates /var/games/explore on first run
+    (owned by you) and seeds it from the share-directory masters -- no setup is
+    needed.
 
-    OpenBSD  ships a "games" group (gid 13); the package uses it by default,
-             so on OpenBSD the files are owned by group "games".
-    Linux    MAY have a "games" group (often gid 60), but it varies by
-             distribution and your players may not be in it.
-    macOS    has no "games" group; the installer will fall back to a default
-             group (typically wheel/gid 0), which ordinary players are NOT in.
+  * For multi-user play, an administrator should create the directory in
+    advance with a group your players share, so that everyone can write to it.
+    /var/games is the standard OpenBSD location for game state and already
+    exists; create the explore subdirectory group-writable and setgid:
 
-  So on macOS -- and on Linux unless your players are already in the packaged
-  group -- you MUST assign an appropriate group and add your players to it
-  before multi-user play will work:
+        mkdir -p /var/games/explore
+        chgrp games /var/games/explore        # or a group of your choice
+        chmod 2775 /var/games/explore
+        cp /usr/local/share/explore/hours.data \
+           /usr/local/share/explore/winners.data /var/games/explore/
+        chgrp games /var/games/explore/*.data
+        chmod 0664 /var/games/explore/*.data
 
-      # groupadd explore                 (or use an existing group)
-      chgrp -R explore /var/games/explore
-      chmod 2775 /var/games/explore
-      chmod 0664 /var/games/explore/*.data
-      # add each player to the group (platform-specific):
-      #   OpenBSD:  usermod -G explore alice  (macOS: dseditgroup)
-      #   Linux:          usermod -aG explore alice
+    Then add each player to that group (see below).  Because the game runs as
+    the player, everyone who plays must be able to write in this directory.
 
-  For a single-player install (only your own account plays), simply make the
-  directory and files owned by your user and group; no shared group is needed.
+The group differs across platforms:
+
+    OpenBSD  ships a "games" group (gid 13) -- use it as shown above.
+    Linux    MAY have a "games" group (often gid 60); it varies by
+             distribution, so create or choose a group your players share.
+    macOS    has no "games" group; create one, or use an existing shared group.
+
+  Add each player to the chosen group (platform-specific):
+
+      OpenBSD:  usermod -G games alice
+      Linux:    usermod -aG games alice
+      macOS:    dseditgroup -o edit -a alice -t user games
 
 If you would instead prefer that ANY user on the system be able to play, you
 can make the directory world-writable (sticky) yourself:

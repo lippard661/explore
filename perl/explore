@@ -70,14 +70,31 @@ Explore::Builtins::register_all($registry);
 $registry->register('set_acl',  sub { });   # commented out on Multics: no-op
 $registry->register('exec_com', sub { });
 
-# --- auto-seed the writable data directory on first run --------------------
-# The read-only masters of the writable files ship as samples (in the
-# examples directory); on first run we copy them into the var dir so wins and
-# hours edits persist.  If the var dir cannot be created/written, we fall back
-# to read-only single-player (the game handles a missing/none rwdir
-# gracefully).  On a packaged install the OpenBSD @sample mechanism will
-# usually have seeded the var dir already, in which case this is a no-op.
+# --- prepare the writable data directory (or fall back to read-only) --------
+# On first run we create the writable directory and seed it from the share
+# masters so that wins and hours edits persist.  If the directory cannot be
+# created or written -- e.g. a normal user on a system where an administrator
+# has not set up a shared, group-writable /var/games/explore -- we must run the
+# game READ-ONLY, because the packaged explore.rwdir points at that directory
+# and the game would otherwise try (and fail) to read its data from there.
+#
+# To force read-only cleanly we override the rwdir the game reads: we point the
+# game's ">site>explore_dir>explore.rwdir" at a temporary file containing the
+# single line "none", which the game treats as "read-only, no writable dir".
+# In read-only mode the game reads hours.data/winners.data from the share
+# directory (where the masters live), so it plays; it simply does not record
+# wins or enable multiplayer.
 my $writable = _seed_var_dir($sharedir, $vardir);
+unless ($writable) {
+    require File::Temp;
+    my ($fh, $tmp) = File::Temp::tempfile(UNLINK => 1);
+    print $fh "none\n"; close $fh;
+    # map the exact rwdir path the game opens to this temporary "none" file
+    Explore::Builtins::add_prefix('>site>explore_dir>explore.rwdir', $tmp);
+    warn "explore: $vardir is not writable; playing read-only "
+       . "(wins will not be recorded).  See the README (PERMISSIONS) to enable "
+       . "writable or multiplayer play.\n";
+}
 
 my $interp = MBasic::Interp->new(
     registry    => $registry,
