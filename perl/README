@@ -7,7 +7,7 @@ output; this distribution runs that authentic reconstructed BASIC source,
 unmodified, on the MBasic interpreter (a separate distribution), so it plays
 on any modern Unix with Perl.
 
-The game version is 5.3; this Perl distribution is version 1.0.
+The game version is 5.3; this Perl distribution is version 1.1.
 
 REQUIREMENTS
 
@@ -107,6 +107,11 @@ files that the game creates at run time in the writable directory, so that
 directory must be writable by every player (see PERMISSIONS below).  The
 sorcerer word is set, rot13-encoded, on the first line of hours.data.
 
+Note that rot13 is obfuscation, not encryption: any player who can read
+hours.data can trivially recover the sorcerer word.  This matches the original
+game, but do not treat the sorcerer word as a real secret -- anyone with read
+access to the shared data directory can learn it.
+
 PERMISSIONS
 
 The writable data directory (default /var/games/explore) holds hours.data,
@@ -138,6 +143,13 @@ and the writable directory is created on demand:
     Then add each player to that group (see below).  Because the game runs as
     the player, everyone who plays must be able to write in this directory.
 
+    The setgid bit on the DIRECTORY (the "2" in 2775) is correct and intended --
+    it makes new files inherit the "games" group.  Do NOT, however, install the
+    "explore" PROGRAM itself setuid or setgid: the game provides a shell escape
+    (the ".." and "m" commands run a shell command as the player) and honors
+    environment variables, so running it with any privileges but the player's
+    own would be a security hole.  The program refuses to start setuid/setgid.
+
 The group differs across platforms:
 
     OpenBSD  ships a "games" group (gid 13) -- use it as shown above.
@@ -161,14 +173,14 @@ This is closer to the game's original Multics behavior, where per-file access
 control let any player update the shared files, but note the tradeoff: any user
 can then also truncate or overwrite the shared data.
 
-Optional extra hardening: make winners.data append-only.  The game only ever
-appends to winners.data (it never rewrites or truncates it), so the hall of
-fame can be protected so that it grows but cannot be altered or erased:
-
-      chflags uappnd /var/games/explore/winners.data     # OpenBSD/BSD/macOS
-      # (on Linux:  chattr +a /var/games/explore/winners.data )
-
-  Do NOT do this to hours.data -- the sorcerer rewrites it in place.
+Note on append-only flags: do NOT set an append-only flag (chflags uappnd /
+chattr +a) on winners.data (or hours.data) with this implementation.  Unlike
+the original Multics game, the Perl version writes every file through the MBasic
+interpreter, which replaces the whole file (write-new-copy-then-rename, or an
+in-place truncate-and-rewrite when the directory is not writable).  Both
+strategies are refused by an append-only flag, so setting one would silently
+stop wins from being recorded.  Protect these files with ordinary directory and
+file permissions instead.
 
 ARTIFACTS
 

@@ -124,6 +124,12 @@ my $interp = MBasic::Interp->new(
     argv        => [ @ARGV ],
 );
 $interp->load_main($basic);
+# Validate every helper up front (load, link, index) so a load-time error in a
+# helper -- a parse rejection, a dangling jump, a duplicate sub -- is reported
+# now, before play begins, rather than dying deep in a session the first time
+# that helper is called (which would lose the player's progress).
+eval { $interp->load_all_helpers($helpers); 1 }
+    or die "explore: a BASIC helper failed to load:\n$@";
 $interp->run(pathxlate => \&Explore::Builtins::mult_path);
 
 # Copy the sample writable files to the var dir if absent; return 1 if the var

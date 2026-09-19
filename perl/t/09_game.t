@@ -42,6 +42,14 @@ my $when = timelocal(0, 0, 12, 9, 8, 2026);   # sec,min,hour, mday, mon(0=Jan), 
 my $interp = MBasic::Interp->new(registry => $reg, search_path => [ $t ], now => $when);
 $interp->load_main("$t/explore.basic");
 
+# Eagerly load/link/index every shipped helper up front, exactly as the runner
+# does.  This both matches the runner's behavior and permanently verifies that
+# all of the game's helper .basic files parse, link, and index cleanly (a
+# regression guard for future edits to a helper).  The 10 exp_*.basic helpers
+# load; explore.basic (the main) is already loaded and is skipped.
+my $nhelpers = eval { $interp->load_all_helpers($t) };
+is($nhelpers, 10, 'all 10 helper .basic files load, link, and index cleanly');
+
 # feed a short command sequence; capture output.  The input callback DIES when
 # the script is exhausted, so any desync (the game asking for more than we
 # scripted) fails the test in seconds instead of hanging the build forever.
