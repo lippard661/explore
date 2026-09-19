@@ -155,13 +155,27 @@ The group differs across platforms:
     OpenBSD  ships a "games" group (gid 13) -- use it as shown above.
     Linux    MAY have a "games" group (often gid 60); it varies by
              distribution, so create or choose a group your players share.
-    macOS    has no "games" group; create one, or use an existing shared group.
+    macOS    has no "games" group, and does NOT consult /etc/group for
+             membership -- groups live in Directory Services, so create the
+             group and add members with dscl (see below).
 
   Add each player to the chosen group (platform-specific):
 
       OpenBSD:  usermod -G games alice
       Linux:    usermod -aG games alice
-      macOS:    dseditgroup -o edit -a alice -t user games
+      macOS:    create the group once, then append each player, and verify:
+
+          sudo dscl . -create /Groups/games
+          sudo dscl . -create /Groups/games PrimaryGroupID 14
+          sudo dscl . -create /Groups/games RealName "Games Group"
+          sudo dscl . -append /Groups/games GroupMembership alice
+          sudo dscl . -append /Groups/games GroupMembership bob
+          dscl . -read /Groups/games        # verify membership
+
+      Pick a PrimaryGroupID not already in use ("dscl . -list /Groups
+      PrimaryGroupID" shows the taken ones; 14 is free on a stock macOS).
+      Use that same gid in the chgrp/chmod 2775 steps above.  Editing
+      /etc/group instead has no effect on macOS.
 
 If you would instead prefer that ANY user on the system be able to play, you
 can make the directory world-writable (sticky) yourself:
