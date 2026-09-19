@@ -2171,7 +2171,7 @@
 20200 print "explore: Entry not found. ";b$
 20210 goto 11480
 20220 let y$ = sst$(y$,2,len(y$)-1)
-20230 if sst$(y$,1,1) = " " then 4300
+20230 if sst$(y$,1,1) = " " then 4300 ' v1 exec_com comment format
 20240 if y$ = "command_line off" then 20340
 20250 if y$ = "command_line on" then 20320
 20260 if sst$(y$,1,5) = "goto " then 20360
