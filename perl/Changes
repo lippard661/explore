@@ -39,8 +39,18 @@ Revision history for Explore (Perl distribution)
        matching the manual PERMISSIONS instructions (File::Copy does not preserve
        mode).
      - The runner restores default SIGINT handling at exit.
+     - The runner now eagerly loads and validates all helper .basic files at
+       startup (via MBasic::Interp::load_all_helpers), so a load-time error in a
+       helper is reported before play begins instead of dying deep in a session
+       (where it would lose the player's progress) the first time that helper is
+       called.  t/09_game.t asserts all ten shipped helpers load cleanly.
 
      Tests / docs:
+     - With exp_home_ now returning a writable home, the abbreviation feature
+       actually runs; its expander (which jumps out of an inner FOR to expand a
+       match) exposed a strict-NEXT incompatibility that MBasic 1.1 fixes
+       (NEXT now closes abandoned inner loops).  New t/10_abbrev.t exercises the
+       whole path (define an abbrev, invoke it) as a regression guard.
      - t/09_game.t pins the clock to a fixed weekday (so it is date-independent
        and never hits the cave-closed path) and its input callback dies when
        exhausted, so a desync fails in seconds instead of hanging the build.
