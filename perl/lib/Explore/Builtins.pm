@@ -1,8 +1,13 @@
 package Explore::Builtins;
 use strict;
 use warnings;
-use Fcntl qw(:flock O_RDWR O_CREAT);
-our $VERSION = '1.0';
+use Fcntl qw(:flock O_RDONLY O_WRONLY O_RDWR O_CREAT O_EXCL O_APPEND O_TRUNC);
+our $VERSION = '1.1';
+
+# O_NOFOLLOW where the platform has it (Linux/*BSD/OpenBSD/macOS); 0 elsewhere.
+# Used so file operations in a shared, possibly world-writable game directory
+# refuse a planted symlink at the target instead of following it.
+use constant O_NOFOLLOW_ => do { my $v = eval { Fcntl::O_NOFOLLOW() }; defined $v ? $v : 0 };
 
 # ============================================================================
 #  Explore::Builtins -- the Explore-specific NATIVE builtins (replacements for
@@ -59,6 +64,16 @@ sub clear_prefixes { @PREFIX_MAP = (); return; }
 #      that has interior '>' from concatenation).
 sub mult_path {
     my ($p) = @_;
+
+    # CONTAINMENT (this is the pathxlate boundary MBasic's SECURITY section
+    # names): refuse parent-directory traversal so a path built from
+    # player-controlled text (abbrev names, etc.) cannot escape the mapped
+    # subtree.  Multics has no ".." (its parent operator is "<"); the game
+    # never uses either, so any occurrence is a bug or an escape attempt.
+    if ($p =~ m{(?:\A|[>/])\.\.(?:[>/]|\z)} || $p =~ /</) {
+        die "Invalid pathname (path traversal not allowed): $p\n";
+    }
+
     return $p unless $p =~ />/;           # no '>' anywhere -> already Unix
 
     # 1. configured prefix substitutions (longest match first)
@@ -115,17 +130,21 @@ sub register_all {
 }
 
 # ---- exp_home_(h$) : write the user's home directory into h$ ----
-# On Multics the caller pre-sizes h9$; on Unix we just set it.  We return a
-# Multics-style home ('>udd>Proj>user') is NOT needed -- the game concatenates
-# ">start_up.explore" etc. onto it and passes through mult_path at open time.
-# We return the configured ROOT as the "home" so the game's h9$&">file" paths
-# resolve under ROOT.  (Alternatively $ENV{HOME}; ROOT keeps the game's data
-# tree self-contained.)
+# The game concatenates ">start_up.explore", the abbrev files, etc. onto h9$
+# and opens the result through mult_path.  We set h9$ to the player's real Unix
+# home directory: h9$ & ">file" then becomes "/home/you>file", which mult_path
+# (rule 3) turns into "/home/you/file".  This is what the README promises --
+# per-user files (saved games, abbrevs, start_up.explore) live in the player's
+# home.  (The earlier '' made every such path resolve to the filesystem root,
+# where a normal user cannot write, so the whole abbreviation feature silently
+# no-opped.)  If no home is discoverable we fall back to $ROOT.
 sub exp_home_ {
     my ($ctx, $args) = @_;
-    # Represent home as a Multics-style path so downstream '&">x"' works and
-    # mult_path maps it under $ROOT.  Use '>' as the home marker (=> $ROOT).
-    $args->[0]->set('');    # empty => h9$ & ">file" = ">file" -> $ROOT/file
+    my $home = $ENV{HOME};
+    $home = (getpwuid($<))[7] if !defined $home || $home eq '';
+    $home = $ROOT             if !defined $home || $home eq '';
+    $home =~ s{/+$}{} unless $home eq '/';   # no trailing slash
+    $args->[0]->set($home);
     return;
 }
 
@@ -147,11 +166,20 @@ sub _dirname { my $p = shift; $p =~ s{/[^/]*$}{}; $p eq '' ? '.' : $p; }
 sub exp_lock_ {
     my ($ctx, $args) = @_;
     my $path = mult_path($args->[0]->get);
+    # already holding this lock in THIS process?  Re-locking is a no-op success;
+    # do not reopen (that would leak the first handle and lose the lock on the
+    # subsequent close).
+    if ($LOCKS{$path}) { $args->[2]->set(1); return; }
     # write-access pre-check: no write => cannot lock => give up (-1)
     my $can = (-e $path) ? (-w $path) : (-w _dirname($path));
     unless ($can) { $args->[2]->set(-1); return; }
     my $fh;
-    unless (open $fh, '+>>', $path) { $args->[2]->set(-1); return; }
+    # O_NOFOLLOW refuses a planted symlink at the lock path; 0666 lets the umask
+    # (the runner sets 0002 for shared play) decide the shared/group bits, so a
+    # lock file is not created 0644 and thus unwritable by the next player.
+    unless (sysopen($fh, $path, O_RDWR | O_CREAT | O_APPEND | O_NOFOLLOW_, 0666)) {
+        $args->[2]->set(-1); return;
+    }
     if (flock($fh, LOCK_EX | LOCK_NB)) {
         $LOCKS{$path} = $fh;                 # hold the lock (and the handle)
         $args->[2]->set(1);                  # acquired
@@ -186,13 +214,24 @@ sub exp_getpw_ {
 sub _read_noecho {
     my $line;
     if (-t STDIN) {
-        system('stty', '-echo') == 0 and do {
-            $line = <STDIN>;
+        if (system('stty', '-echo') == 0) {
+            # Guarantee echo is turned back ON even if the read dies (MBasic 1.1
+            # can die mid-prompt on a run-time error), so we never strand the
+            # player's terminal with echo off.
+            my $ok = eval { $line = <STDIN>; 1 };
             system('stty', 'echo');
             print "\n";
-        };
+            die $@ if !$ok;                 # re-raise AFTER restoring the terminal
+        } else {
+            # Could not disable echo: warn rather than silently echoing the
+            # (admittedly rot13, non-secret) word, then read it visibly.
+            warn "explore: could not disable terminal echo; input will be visible\n";
+            $line = <STDIN>;
+            print "\n";
+        }
+    } else {
+        $line = <STDIN>;                    # non-tty (tests / pipes): no echo issue
     }
-    $line = <STDIN> unless defined $line;   # non-tty fallback (tests/pipes)
     chomp $line if defined $line;
     return defined $line ? $line : '';
 }
@@ -229,7 +268,12 @@ sub cmd_do {
 sub cmd_create {
     my ($ctx, $args) = @_;
     my $path = mult_path($args->[0]->get);
-    unless (-e $path) { open my $fh, '>', $path or return; close $fh; }
+    # O_CREAT|O_EXCL creates only when absent (no TOCTOU between -e and open) and
+    # O_NOFOLLOW refuses a planted symlink; an already-present file (EEXIST) or
+    # any other failure is ignored, as before.
+    if (sysopen(my $fh, $path, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW_, 0666)) {
+        close $fh;
+    }
     return;
 }
 
@@ -241,16 +285,23 @@ sub cmd_delete_force {
     return;
 }
 
-# sort_seg "path" [,"-replace"]  -> sort the file's lines in place
+# sort_seg "path" [,"-replace"]  -> sort the file's lines, atomically
 sub cmd_sort_seg {
     my ($ctx, $args) = @_;
     my $path = mult_path($args->[0]->get);
     return unless -f $path;
-    open my $in, '<', $path or return;
+    # O_NOFOLLOW: don't read/write through a planted symlink.
+    sysopen(my $in, $path, O_RDONLY | O_NOFOLLOW_) or return;
     my @lines = <$in>; close $in;
     @lines = sort @lines;
-    open my $out, '>', $path or return;
-    print $out @lines; close $out;
+    # write a temp beside the file and rename, so a crash mid-sort cannot lose
+    # the file (the old in-place truncate-then-write could).
+    my $tmp = _dirname($path) . "/.exp_sort.$$";
+    sysopen(my $out, $tmp, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW_, 0666) or return;
+    print $out @lines or do { close $out; unlink $tmp; return; };
+    close $out or do { unlink $tmp; return; };
+    if (my @st = stat $path) { chmod $st[2] & 07777, $tmp; }  # preserve mode
+    rename($tmp, $path) or do { unlink $tmp; return; };
     return;
 }
 

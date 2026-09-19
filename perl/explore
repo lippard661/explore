@@ -3,6 +3,28 @@
 # Runs with no arguments using sensible defaults; options override them.
 use strict; use warnings;
 
+# SECURITY: the game exposes a full shell escape (the ".."/"m" commands -> the
+# `do` builtin) and honors environment variables (MBASIC_LIB adds to @INC), so
+# it must run with the invoking user's own privileges.  Refuse to start
+# setuid/setgid -- this must happen in a BEGIN, before the MBASIC_LIB `use lib`
+# below (a compile-time statement) can act on an attacker's environment.
+BEGIN {
+    my ($rgid) = split ' ', $(;      # real primary gid
+    my ($egid) = split ' ', $);      # effective primary gid
+    die "explore must not be installed or run setuid/setgid.\n"
+        if $< != $> || $rgid != $egid;
+}
+
+# New files the game creates (lock/registry/message files, seeded data) should
+# be group-writable so other players in a shared game can use them; a 0002
+# umask gives 0664/0775.  (MBasic and the lock code create with mode 0666, so
+# the umask decides the group/other bits.)
+umask 0002;
+
+# Restore default SIGINT handling at exit (quit_off sets it to IGNORE and an
+# abnormal path might not reach quit_on).
+END { $SIG{INT} = 'DEFAULT'; }
+
 # When installed, MBasic and Explore are on the system @INC via the p5-MBasic
 # and p5-Explore packages -- no path munging is needed.  For running from an
 # unpacked source tree without installing, set MBASIC_LIB to the lib directory.
@@ -118,7 +140,12 @@ sub _seed_var_dir {
     for my $name (qw(hours.data winners.data)) {
         my $dst = "$var/$name";
         my $src = "$share/$name";
-        if (!-e $dst && -e $src) { File::Copy::copy($src, $dst); }
+        # copy the master in only if it is missing.  File::Copy::copy does not
+        # preserve mode, so set the working copy group-writable (0664 & ~umask)
+        # for shared play -- matching the manual PERMISSIONS instructions.
+        if (!-e $dst && -e $src) {
+            File::Copy::copy($src, $dst) and chmod(0664 & ~umask, $dst);
+        }
     }
     return 1;
 }

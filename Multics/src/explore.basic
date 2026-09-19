@@ -214,12 +214,12 @@
 1980 let b$(i) = n$(i)
 1990 let e$(i) = o$(i)
 2000 next i
-2010 goto 1560
+2010 goto 1555
 2020 for i = 1 to 2
 2030 let b$(i) = t$(i)
 2040 let e$(i) = u$(i)
 2050 next i
-2060 goto 1560
+2060 goto 1555
 2070 let l=-1
 2080 let x1 = 1
 2090 goto 2170

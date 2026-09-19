@@ -67,9 +67,13 @@ SKIP: {
     flock($held, Fcntl::LOCK_UN()); close $held;
 }
 
-# --- exp_home_ sets h$ to '' (so h$ & ">x" resolves under ROOT) ---
-is(run(['10 call "exp_home_": h$', '20 print "["; h$; "]"', '30 end']),
-   "[]\n", 'exp_home_ sets home marker (empty -> ROOT-relative)');
+# --- exp_home_ sets h$ to the player's real home dir (per-user files) ---
+{
+    local $ENV{HOME} = '/home/tester';
+    is(run(['10 call "exp_home_": h$', '20 print "["; h$; "]"', '30 end']),
+       "[/home/tester]\n",
+       'exp_home_ sets h$ to the user home (h$ & ">file" -> ~/file)');
+}
 
 # --- quit_off / quit_on set the SIGINT handler ---
 run(['10 call "quit_off"', '20 end']);
@@ -115,6 +119,43 @@ is($SIG{INT}, 'DEFAULT', 'quit_on restores SIGINT default');
     # do -> command execution (echo, captured to output sink)
     my $out = run(['10 call "do": "echo hello_from_do"', '20 end']);
     like($out, qr/hello_from_do/, 'do executes a shell command');
+}
+
+# --- mult_path containment: reject parent-directory traversal ---
+{
+    my $err = '';
+    eval { Explore::Builtins::mult_path('>site>explore_dir>..>..>..>etc>passwd'); 1 }
+        or $err = $@;
+    like($err, qr/path traversal/, 'mult_path rejects ">..>" traversal');
+    $err = '';
+    eval { Explore::Builtins::mult_path('a/../../etc/passwd'); 1 } or $err = $@;
+    like($err, qr/path traversal/, 'mult_path rejects Unix "../" traversal');
+    # a legitimate game path is unaffected
+    is(Explore::Builtins::mult_path('>site>explore_dir>hours.data'),
+       "$dir/site/explore_dir/hours.data", 'mult_path passes a normal path');
+}
+
+# --- exp_lock_ is re-entrant in one process (no handle leak / lost lock) ---
+{
+    my $lf2 = "$dir/reent.lock"; open my $x,'>',$lf2; close $x;
+    my $got = run(['10 call "exp_lock_": ">reent.lock", 5, s1',
+                   '20 call "exp_lock_": ">reent.lock", 5, s2',
+                   '30 print s1; s2',
+                   '40 call "exp_unlock_": ">reent.lock"', '50 end']);
+    is($got, " 1  1 \n", 'exp_lock_ re-lock in same process returns 1 without leaking');
+}
+
+# --- create / sort_seg refuse a symlinked target (O_NOFOLLOW) ---
+SKIP: {
+    my $victim = "$dir/nofollow_victim"; open my $v,'>',$victim; print $v "keep\n"; close $v;
+    my $link = "$dir/nf.link";
+    skip "symlink unsupported here", 2 unless eval { symlink($victim,$link); 1 } && -l $link;
+    run(['10 call "create": ">nf.link"', '20 end']);       # must not write through the link
+    open my $r,'<',$victim; my $c=<$r>; close $r; chomp $c;
+    is($c, 'keep', 'create does not follow a symlink (O_NOFOLLOW)');
+    run(['10 call "sort_seg": ">nf.link"', '20 end']);     # must not sort through the link
+    open my $r2,'<',$victim; my $c2=<$r2>; close $r2; chomp $c2;
+    is($c2, 'keep', 'sort_seg does not follow a symlink (O_NOFOLLOW)');
 }
 
 done_testing;

@@ -7,6 +7,7 @@ explore
 lib/Explore/Builtins.pm
 t/08_builtins.t
 t/09_game.t
+share/explore.basic
 share/exp_after_.basic
 share/exp_before_.basic
 share/exp_cmd_query_.basic
@@ -17,9 +18,8 @@ share/exp_help_.basic
 share/exp_log_.basic
 share/exp_search_.basic
 share/exp_val_.basic
-share/explore.basic
 share/explore.data
 share/explore.help
-share/explore.rwdir
 share/hours.data
 share/winners.data
+examples/explore.rwdir

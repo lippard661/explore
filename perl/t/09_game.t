@@ -3,6 +3,7 @@ use FindBin; use lib "$FindBin::Bin/../lib"; use lib ($ENV{MBASIC_LIB} // ());
 use Test::More;
 use File::Temp qw(tempdir);
 use File::Copy;
+use Time::Local qw(timelocal);
 
 # This test runs the actual game far enough to prove it loads and executes:
 # it starts the game, issues a couple of commands, and quits, asserting the
@@ -33,20 +34,30 @@ my $reg = MBasic::Registry->new;
 Explore::Builtins::register_all($reg);
 $reg->register('set_acl', sub {}); $reg->register('exec_com', sub {});
 
-my $interp = MBasic::Interp->new(registry => $reg, search_path => [ $t ]);
+# Pin the clock to a known WEEKDAY (Wed 2026-09-09, noon local) so the test is
+# deterministic: it does not depend on the day it happens to run, and it never
+# enters the weekend/holiday "cave closed" path.  (MBasic's Env derives dat$ /
+# clk$ from localtime(now).)
+my $when = timelocal(0, 0, 12, 9, 8, 2026);   # sec,min,hour, mday, mon(0=Jan), year
+my $interp = MBasic::Interp->new(registry => $reg, search_path => [ $t ], now => $when);
 $interp->load_main("$t/explore.basic");
 
-# feed a short command sequence; capture output
-my @input = ("in\n", "look\n", "quit\n", "yes\n");
+# feed a short command sequence; capture output.  The input callback DIES when
+# the script is exhausted, so any desync (the game asking for more than we
+# scripted) fails the test in seconds instead of hanging the build forever.
+my @input = ("in", "look", "quit", "yes");
 my $out = '';
 $interp->run(
     pathxlate => \&Explore::Builtins::mult_path,
     out   => sub { $out .= $_[0] },
-    input => sub { my $l = shift @input; defined $l ? do { chomp(my $c=$l); $c } : "quit" },
+    input => sub {
+        die "game requested more input than the test script provides\n" unless @input;
+        return shift @input;
+    },
 );
 
 like($out, qr/Version 5\.3/,        'game prints its version banner');
-like($out, qr/small wooden/i,       'room description appears (entered the shack)');
+like($out, qr/small wooden/i,       'room description appears (the shack)');
 like($out, qr/You scored/,          'quit reaches the scoring sequence');
 
 done_testing;
