@@ -47,7 +47,7 @@ files are likewise identical between the Multics/install and
 perl/share directories.
 
 The perl version can be installed on OpenBSD using pkg_add and the
-p5-Explore-1.0.tgz package in this repo, which is a Legion of Dynamic
+p5-Explore-1.1.tgz package in this repo, which is a Legion of Dynamic
 Discord-signed package. The same package can be installed on macOS or
 Linux using my install.pl script found in this repo:
 
