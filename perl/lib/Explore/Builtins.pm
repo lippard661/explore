@@ -2,7 +2,7 @@ package Explore::Builtins;
 use strict;
 use warnings;
 use Fcntl qw(:flock O_RDONLY O_WRONLY O_RDWR O_CREAT O_EXCL O_APPEND O_TRUNC);
-our $VERSION = '1.1';
+our $VERSION = '1.2';
 
 # O_NOFOLLOW where the platform has it (Linux/*BSD/OpenBSD/macOS); 0 elsewhere.
 # Used so file operations in a shared, possibly world-writable game directory

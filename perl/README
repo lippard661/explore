@@ -7,7 +7,7 @@ output; this distribution runs that authentic reconstructed BASIC source,
 unmodified, on the MBasic interpreter (a separate distribution), so it plays
 on any modern Unix with Perl.
 
-The game version is 5.3; this Perl distribution is version 1.1.
+The game version is 5.3; this Perl distribution is version 1.2.
 
 REQUIREMENTS
 
@@ -69,6 +69,44 @@ matching EXPLORE_* environment variables; run "explore --help" for the list.
 The unmodified BASIC uses Multics pathnames like ">site>explore_dir>..."; the
 runner maps ">site>explore_dir" to the share directory automatically, and you
 can add further mappings with --prefix 'MULTICS=/unix'.
+
+GAME ARGUMENTS
+
+The command line carries two separate vocabularies.  The runner's own options
+are double-dash (--share, --var, ...).  Anything else is a game argument and is
+passed through to the BASIC program untouched; the game reads it with the cnt
+and arg$(n) built-ins.  These are the authentic single-dash Multics control
+arguments the game accepted in 1980, so they work against the unmodified
+reconstructed source:
+
+    -abbrev PATH, -ab PATH  use PATH as the abbreviation file (".explore_abbrev"
+                            is appended if PATH does not already end in it)
+    -brief, -bf             suppress the welcome message and the news lines
+    -modes STR              set modes from a comma-separated list
+    -no_startup, -ns        do not read start_up.explore
+    -no_version             print no version line
+    -pathname PATH, -pn PATH
+                            read the game database from PATH instead of
+                            <share>/explore.data
+    -table_space, -ts       report table space used while loading
+    -version                print the long version line
+
+For example:
+
+    explore -brief -ts               # two game arguments
+    explore --var /tmp/x -pn ./alt.data   # runner options and game arguments mixed
+
+Because the two vocabularies differ in their dash count they can be
+interleaved freely: runner options are recognized anywhere on the line and are
+removed before the rest reaches the game, so cnt counts only real game
+arguments.  Note that -abbrev, -modes and -pathname each consume the argument
+that FOLLOWS them, so keep those pairs together and in order.
+
+One case is ambiguous: a game argument or pathname that itself begins with
+"--", which the runner would otherwise try to parse as its own option.  Put
+"--" first and everything after it goes to the game verbatim:
+
+    explore -- -pn --odd-name
 
 DATA FILE FORMATS
 

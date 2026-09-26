@@ -46,9 +46,26 @@ my $helpers  = $ENV{EXPLORE_HELPERS};                # derived from share if uns
 my $root     = $ENV{EXPLORE_ROOT}     // '/';       # fallback anchor for '>'
 my @prefix;                                          # extra --prefix M=U pairs
 
-while (@ARGV && $ARGV[0] =~ /^--/) {
+# --- argument split: runner options vs. game control arguments -------------
+# Two argument vocabularies share one command line.  This runner's own options
+# are double-dash (--share, --var, ...); the game's control arguments are the
+# authentic single-dash Multics ones (-brief, -pn PATH, ...), which the BASIC
+# reads through cnt and arg$(n).  Keeping the dash counts distinct lets the two
+# be interleaved freely.
+#
+# Every argument not consumed here is collected, IN ORDER, and handed to the
+# interpreter as the program's argument vector, so cnt counts only real game
+# arguments and arg$(n) indexes only them.  Order and adjacency matter to the
+# game: -pathname and -modes each consume the argument that follows them.
+#
+# "--" ends option processing: everything after it goes to the game verbatim.
+# That is the escape hatch for the one ambiguous case, a game argument or
+# pathname that itself begins with "--".
+my @gameargs;
+while (@ARGV) {
     my $f = shift @ARGV;
-    if    ($f eq '--share')   { $sharedir = shift @ARGV; }
+    if    ($f eq '--')        { push @gameargs, splice(@ARGV); last; }
+    elsif ($f eq '--share')   { $sharedir = shift @ARGV; }
     elsif ($f eq '--var')     { $vardir   = shift @ARGV; }
     elsif ($f eq '--basic')   { $basic    = shift @ARGV; }
     elsif ($f eq '--helpers') { $helpers  = shift @ARGV; }
@@ -56,7 +73,9 @@ while (@ARGV && $ARGV[0] =~ /^--/) {
     elsif ($f eq '--prefix')  { push @prefix, shift @ARGV; }  # "MULTICS=/unix"
     elsif ($f eq '--help') {
         print <<"USAGE";
-usage: explore [options] [game-args...]
+usage: explore [options] [game-arguments...]
+
+Options to this runner (may appear anywhere on the command line):
   --share DIR    read-only game content (default $sharedir)
   --var DIR      read-write data directory (default $vardir)
   --basic FILE   the main BASIC program (default <share>/explore.basic)
@@ -64,12 +83,30 @@ usage: explore [options] [game-args...]
   --root DIR     anchor for unmapped Multics '>' paths (default /)
   --prefix M=U   map a Multics path prefix M to a Unix path U (repeatable);
                  e.g. --prefix '>site>explore_dir=/usr/local/share/explore'
+  --             end of options; everything after goes to the game
 Environment: EXPLORE_SHAREDIR, EXPLORE_VARDIR, EXPLORE_BASIC, EXPLORE_HELPERS,
              EXPLORE_ROOT, MBASIC_LIB.
+
+Arguments to the game (the original 1980 Multics control arguments, passed
+through to the BASIC untouched).  Three of them take the argument that
+follows, so keep each pair together and in order:
+  -abbrev PATH, -ab PATH  use PATH as the abbreviation file (".explore_abbrev"
+                          is appended if PATH does not already end in it)
+  -brief, -bf             suppress the welcome message and the news lines
+  -modes STR              set modes from a comma-separated list
+  -no_startup, -ns        do not read start_up.explore
+  -no_version             print no version line
+  -pathname PATH, -pn PATH
+                          read the game database from PATH instead of
+                          <share>/explore.data
+  -table_space, -ts       report table space used while loading
+  -version                print the long version line
+Use "--" first if a game argument or pathname begins with "--".
 USAGE
         exit 0;
     }
-    else { die "unknown option $f (try --help)\n"; }
+    elsif ($f =~ /^--/)       { die "unknown option $f (try --help)\n"; }
+    else                      { push @gameargs, $f; }   # -> the game
 }
 
 # derive defaults that depend on --share, after parsing
@@ -121,7 +158,7 @@ unless ($writable) {
 my $interp = MBasic::Interp->new(
     registry    => $registry,
     search_path => [ $helpers ],
-    argv        => [ @ARGV ],
+    argv        => [ @gameargs ],   # cnt / arg$(n) in the BASIC
 );
 $interp->load_main($basic);
 # Validate every helper up front (load, link, index) so a load-time error in a
@@ -167,6 +204,9 @@ explore - play the reconstructed 1980 Multics game "Explore"
     explore                          # play with default locations
     explore --share DIR --var DIR    # override the data locations
     explore --prefix '>a>b=/unix/x'  # add a Multics->Unix path mapping
+    explore -brief -ts               # pass control arguments to the game
+    explore --var DIR -pn ./my.data  # runner options and game arguments mixed
+    explore -- -pn --odd-name        # "--" ends options; the rest is the game's
 
 =head1 DESCRIPTION
 
@@ -209,7 +249,72 @@ Map a Multics path prefix to a Unix path, repeatable.  By default
 C<< >site>explore_dir >> maps to the share directory, so the game's unmodified
 paths resolve without editing the BASIC.
 
+=item B<-->
+
+End of options.  Every remaining argument is passed to the game untouched,
+even if it begins with C<-->.
+
 =back
+
+=head1 GAME ARGUMENTS
+
+The command line carries two separate vocabularies.  The options above belong
+to this runner and are double-dash; anything else on the line is a B<game>
+argument and is passed through to the BASIC program, which reads the arguments
+with the C<cnt> and C<arg$(n)> built-ins.  These are the authentic single-dash
+Multics control arguments the game accepted in 1980, so the reconstructed
+source needs no modification to honor them.
+
+Because the two vocabularies differ in their dash count, they may be
+interleaved freely: runner options are recognized anywhere on the line and are
+removed before the rest is handed to the game.  C<cnt> therefore counts only
+real game arguments, and C<arg$(n)> indexes only them.
+
+=over 4
+
+=item B<-abbrev> I<PATH> / B<-ab> I<PATH>
+
+Use I<PATH> as the abbreviation file, appending C<.explore_abbrev> if it does
+not already end in that.
+
+=item B<-brief> / B<-bf>
+
+Suppress the welcome message and the news lines.
+
+=item B<-modes> I<STR>
+
+Set modes from a comma-separated list.
+
+=item B<-no_startup> / B<-ns>
+
+Do not read C<start_up.explore>.
+
+=item B<-no_version>
+
+Print no version line.
+
+=item B<-pathname> I<PATH> / B<-pn> I<PATH>
+
+Read the game database from I<PATH> instead of F<< <share>/explore.data >>.
+
+=item B<-table_space> / B<-ts>
+
+Report table space used while loading.
+
+=item B<-version>
+
+Print the long version line.
+
+=back
+
+C<-abbrev>, C<-modes> and C<-pathname> each consume the argument that follows
+them, so keep those pairs adjacent and in order; the runner preserves the
+relative order of everything it passes through.
+
+One case is genuinely ambiguous: a game argument or pathname that itself
+begins with C<-->, which the runner would otherwise try to parse as its own
+option.  Put C<--> first to resolve it --- everything after C<--> goes to the
+game verbatim.
 
 =head1 ENVIRONMENT
 

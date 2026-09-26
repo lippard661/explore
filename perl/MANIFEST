@@ -7,6 +7,8 @@ explore
 lib/Explore/Builtins.pm
 t/08_builtins.t
 t/09_game.t
+t/10_abbrev.t
+t/11_args.t
 share/explore.basic
 share/exp_after_.basic
 share/exp_before_.basic

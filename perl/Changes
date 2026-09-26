@@ -1,5 +1,28 @@
 Revision history for Explore (Perl distribution)
 
+1.2  2026-09-26
+     Fix at the direction of Jim Lippard by Claude Opus 5.0:
+     - The runner now separates its own options from the game's control
+       arguments properly.  It had stopped scanning at the first argument that
+       was not double-dash, so any runner option written AFTER a game argument
+       was silently not parsed and was handed to the game instead ("explore
+       -brief --share DIR" left the share directory at its default and passed
+       "--share" and "DIR" to the BASIC, inflating cnt to 3).  Runner options
+       are now recognized anywhere on the line and removed, so cnt counts only
+       real game arguments and arg$(n) indexes only them; the relative order
+       and adjacency of what passes through is preserved, which -abbrev,
+       -modes and -pathname depend on.  "--" is honored as end-of-options for
+       the one ambiguous case, a game argument or pathname beginning with
+       "--".
+     Docs:
+     - The game's control arguments are now documented.  They had always been
+       passed through and honored, but nothing said so beyond "[game-args...]"
+       in the usage line: "explore --help", the POD, and the README now list
+       all eight (-abbrev, -brief, -modes, -no_startup, -no_version,
+       -pathname, -table_space, -version), note which three take the argument
+       that follows, and explain the "--" separator.  New t/11_args.t covers
+       the split.
+
 1.1  2026-09-19
      Fixes and hardening from an external review (Claude Opus 5.0).  Requires
      MBasic 1.1.
