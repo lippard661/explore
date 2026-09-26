@@ -1,0 +1,27 @@
+This folder contains artifacts derived from three lineprinter documents, and the
+distributed game contains one more:
+
+The file >user_dir_dir>MED>Kaiser>Lippard>exp_dir>explore.basic.1,
+   printed by Lippard.Scouting.a on 06/27/80 2047.7 mst Fri. Kaiser.MED
+   was W. Garry Kaiser, who worked for Honeywell Marketing and was a close
+   family friend; he was probably providing me with disk space since our
+   "quota" was limited. This is Multics Basic version 5.3 of the game.
+
+The file >user_dir_dir>MED>Kaiser>Lippard>explore_dir>explore.data.explore,
+   printed by Lippard.Multics.a on 07/14/80 0207.8 mst Mon. This was a listing
+   of the game database version 6.0, an aspirational new version for which the
+   program was never completed.
+
+
+The file >udd>sct>sed>explore.play, printed by Lippard.Scouting.a on
+   10/18/82 0155.7 mst Mon.  sed was Steve Ditton, sct was a short
+   name for Scouting, the Multics System M project ID of the
+   Honeywell-sponsored Explorers Post 414. This was a play-through of
+   game version 4.3.
+
+The winners.data distributed on this site was also an artifact from lineprinter
+   output, the file >user_dir_dir>MED>Kaiser>Lippard>explore_dir>temp>winners.data,
+   printed by Lippard.Scouting.a on 11/03/80 0127.4 mst Mon.
+
+Everything else in the repo was reconstructed from these artifacts, memory, and
+inference from these artifacts.

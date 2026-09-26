@@ -138,7 +138,9 @@ Okay.
 ? w
 You're at the Crossroads. Passages go in all directions.
 ? e
-You're in the Explore Auxiliary Control Center. [...]
+You're in the Explore Auxiliary Control Center. Computer
+consoles line the room. To one side are some disk drives
+and tape reels. Engraved in one wall in solid gold is the word
 "MULTICS". A dim passage exits to the West.
 ? w
 You're at the Crossroads. Passages go in all directions.
@@ -148,7 +150,7 @@ is visible across the hole on the other side. A passage exits
 to the East.
 A bird's nest filled with silver eggs lies on the floor!
 ? indiana
->Foof
+>Foof<
 You're on the West side of the abyss. A single passage exits
 to the East where it promptly goes straight down into the pit.
 An ivory statue is here!
@@ -160,7 +162,7 @@ loud >thud<.
 ? get all
 Okay.
 ? indiana
->Foof
+>Foof<
 You're at the brink of a 1000 foot deep abyss. A dim passage
 is visible across the hole on the other side. A passage exits
 to the East.
@@ -230,7 +232,7 @@ Okay.
 ? w
 You're in the Grafitti Room. Notes are scribbled all
 over the walls. Passages go East and West.
-A sign with the message "Up with Multics' is here.
+A sign with the message "Up With Multics' is here.
 ? get
 Okay.
 ? e
@@ -270,13 +272,13 @@ There is a pile of gold bars here!
 Okay.
 ? w
 You're in a room filled with buzzing insects (They appear to be
-mosquitoes!). Scratched on the wall is the message "It kills fast".
+mosquitoes!). Scratched on the wall is the message "It Kills Fast".
 Passages go South and East.
 A small test tube with a stopper in one end lies nearby.
 ? get
 Okay.
 ? Dale Buhanan
->Foof
+>Foof<
 You're at the West end of a long hall stretching out of
 sight to the East.
 A large roc's egg is here!
@@ -382,7 +384,7 @@ A pile of egg-shaped silicon nodules is here!
 ? get
 Okay.
 ? nlocnil
->Foof
+>Foof<
 You're in the Light Room. It is impossible to see anything because
 of the glare.
 Some liquid that glows is in a container here.
@@ -434,6 +436,98 @@ Passages go South and West.
 You're in the Basilisk's Den.
 ? s
 You are in a massive room filled with hundreds of ceiling-high
+shelves. Each shelf is lined with computer print-outs.
+A computer printout for "Explore" is here!
+? get
+Okay.
+? s
+You're in a small room with no exits. A note on the wall reads
+"Remember the magic words".
+The beautiful Bird's Egg Ruby is here!
+? get
+Okay.
+? nilrem
+>Foof<
+You are in a small shack for storing tools.
+There is a door in the floor.
+? Dale Buhanan
+>Foof<
+You're at the West end of a long hall stretching out of
+sight to the East.
+? u
+You're in a complex circuitry of tunnels.
+? w
+You're in a complex circuitry of tunnels.
+? n
+You're in a complex circuitry of tunnels.
+? w
+You're at the Crossroads. Passages go in all directions.
+? n
+You're in a room with sand on the floor. To one side is a
+small pond. Passages exit to the North and South.
+A long and sharp sword lies on the floor.
+A scylla (A nymph from the waist up, but 6 ravenous dogs below) is here!
+? get sword
+Okay.
+? throw sword
+The sword neatly slices the head from the scylla, who vanishes.
+? get
+Okay.
+? n
+You're in a fairly long passage lit by torches lining the
+walls. Passages go North and South.
+? s
+You're in a room with sand on the floor. To one side is a
+small pond. Passages exit to the North and South.
+? s
+You're at the Crossroads. Passages go in all directions.
+? s
+You're in the Lower Cross Room. The walls are rough unsanded
+wood. Passages go North and South.
+? s
+You're in the Hall of the Sorcerer. The walls are paneled
+wood, there are deep velvet curtains hanging on each side
+of the hall. Passages exit to the North and South.
+? s
+You're in Elbow Pipe II, a steel tunnel. Passages go
+North and West.
+A huge poisonous scorpion waits in the passage!
+? throw medallion
+The light from your flashlight reflects from the medallion as it
+falls. The reflected light disintegrates the scorpion.
+? get
+Okay.
+? Dale Buhanan
+>Foof<
+You're at the West end of a long hall stretching out of
+sight to the East.
+? e
+You're in the middle of the long hall.
+? e
+You're at the East end of a long hall stretching out of
+sight to the West.
+? e
+You're at the entrance to a very thin room.
+? e
+You're in the thin room. No exits are visible because it is pitch
+dark and your flashlight beam stops one inch from the end of the
+flashlight casing.
+A dark is here!
+There is a threatening burly dwarf in the room with you!
+A steely metal knife is thrown at you!
+It misses!
+? throw liquid
+The light from the liquid seems to be making the dark fade a bit.
+As a matter of fact, the dark is vanishing (or at least becoming
+ordinary darkness)!
+? get
+Okay.
+? get
+There is nothing here to get!
+? xineohp
+The dwarf vanishes.
+? nilrem
+>Foof<
 You are in a small shack for storing tools.
 There is a door in the floor.
 ? drop all
@@ -443,9 +537,75 @@ Okay.
 ? score
 Your current score is  480  points.
 ? Dale Buhanan
->Foof
-[...back through halls, thin→waterfall→short-hall→elbow3→metal→weasel→
- terminal→Lippard→twisted→chamber→nlocnil→light→experiment→basilisk→scroll...]
+>Foof<
+You're at the West end of a long hall stretching out of
+sight to the East.
+? e
+You're in the middle of the long hall.
+? e
+You're at the East end of a long hall stretching out of
+sight to the West.
+? e
+You're at the entrance to a very thin room.
+? e
+You're in the thin room. No exits are visible because it is pitch
+dark and your flashlight beam stops one inch from the end of the
+flashlight casing.
+? n
+You're in a chamber with waterfalls on either side. They are
+lit from behind by powerful spotlights.
+There is a threatening little dwarf in the room with you!
+A steely metal knife is thrown at you!
+It misses!
+? xineohp
+The dwarf vanishes.
+? e
+You're in a short hall with holes in the ceiling through which
+sand is pouring.
+? e
+You're in Elbow Pipe III, a steel tunnel. Passages go North
+and South.
+? s
+You're in a metal tunnel that is straight, but turns the corner
+to the South.
+? s
+You're in the Weasel Room.
+? w
+You're in the Screening Room. Video terminals obviously
+connected to Explore Multics line the walls.
+? w
+You're in the Lippard Room. Pictures of spotted leopards hang
+on the walls.
+? w
+You're in a twisted passage. A sign on the wall says "MERLIN".
+A passage goes South, and another goes East.
+? s
+You're in the Chamber of Ages. Ancient sculptures are set on pedestals
+around the room. Many glare at you menacingly, looking almost alive.
+There is an inter-dimensional time/space duct that can be accessed by a
+magic word somewhere nearby.
+There is a threatening burly dwarf in the room with you!
+A steely metal knife is thrown at you!
+It misses!
+? xineohp
+The dwarf vanishes.
+? nlocnil
+>Foof<
+You're in the Light Room. It is impossible to see anything because
+of the glare.
+? w
+You're in the Explore Experimentation Chamber. Glass cases fill the
+room. As you look closer at one, you see that it contains a small
+dwarf. A card at the end of this case reads "Olney Littlehand".
+Passages go East and West.
+? w
+You're in the Basilisk's Den.
+? n
+You're in the Scroll Room. Papyrus scrolls hang from the walls.
+Passages go South and West.
+There is a threatening little dwarf in the room with you!
+A steely metal knife is thrown at you!
+It misses!
 ? w
 You're at the entrance to the Vault of Tomorrow. A steel door
 blocks the way. A note on the wall reads "Name of the Game".
@@ -455,7 +615,7 @@ It misses!
 ? xineohp
 The dwarf vanishes.
 ? erolpxe
->Foof
+>Foof<
 You are in the Vault of Tomorrow. The walls consist of blued [steel...]
 [The Vault of Tomorrow:] steel, as does the floor and ceiling. In the center of this
 otherwise empty room is a circular pedestal upon which is a
