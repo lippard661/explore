@@ -1,5 +1,32 @@
 Revision history for Explore (Perl distribution)
 
+1.3  2026-09-28
+     Fixes at the direction of Jim Lippard by Claude Opus 5.0, reported by a
+     user porting the distribution to Windows.  Requires MBasic 1.3.
+     - "get all" no longer picks up the invisible barrier markers (the abyss,
+       fissure and rock-1 objects, which carry an empty description and exist
+       only to block movement).  The 2026 guard had been added to the loop
+       that counts what is visible for a plain "get" (7005), but the "all"
+       path at 7240-7350 is a separate pair of loops and had no such test, so
+       "get all" silently added the markers to the player's inventory.  A
+       room holding nothing but a marker now correctly reports "There is
+       nothing here to get!".
+     - A bare "save" or "restore" works and uses the default name.  The
+       command dispatcher matched only "save " and "restore " WITH a trailing
+       space (6230, 6240), so the bare word fell through to "I don't know the
+       word" -- while the handlers at 8970 and 9390 already implemented the
+       default SAVED_GAME_ name that explore.help documents, as unreachable
+       dead code.  The 1980 source (artifacts/explore.basic.5.3) has the same
+       four lines, so this is an original defect rather than a transcription
+       or porting error; the internal evidence is that BASIC strings were not
+       blank-padded (only h9$, which comes back from a PL/I helper, is
+       trimmed at line 45), so the bare word really could not match.  Added
+       6225/6226 to route it, leaving the trailing-space lines untouched.
+     - "-abbrev NAME" works again, given MBasic 1.3: the abbreviations are
+       read during argument processing and were erased when control reached
+       the dim block (and a file of more than ten entries faulted first).
+     - New t/12_game_fixes.t covers all three.
+
 1.2  2026-09-26
      Fix at the direction of Jim Lippard by Claude Opus 5.0:
      - The runner now separates its own options from the game's control
@@ -22,32 +49,6 @@ Revision history for Explore (Perl distribution)
        -pathname, -table_space, -version), note which three take the argument
        that follows, and explain the "--" separator.  New t/11_args.t covers
        the split.
-
-     Reported from a Windows port of the distribution:
-     - "get all" no longer picks up the invisible barrier markers (the abyss,
-       fissure and rock-1 objects, which carry an empty description and exist
-       only to block movement).  The 2026 guard had been added to the loop
-       that counts what is visible for a plain "get" (7005), but the "all"
-       path at 7240-7350 is a separate pair of loops and had no such test, so
-       "get all" silently added the markers to the player's inventory.  A
-       room holding nothing but a marker now correctly reports "There is
-       nothing here to get!".
-     - A bare "save" or "restore" works and uses the default name.  The
-       command dispatcher matched only "save " and "restore " WITH a trailing
-       space (6230, 6240), so the bare word fell through to "I don't know the
-       word" -- while the handlers at 8970 and 9390 already implemented the
-       default SAVED_GAME_ name that explore.help documents, as unreachable
-       dead code.  The 1980 source (artifacts/explore.basic.5.3) has the same
-       four lines, so this is an original defect rather than a transcription
-       or porting error; the internal evidence is that BASIC strings were not
-       blank-padded (only h9$, which comes back from a PL/I helper, is
-       trimmed at line 45), so the bare word really could not match.  Added
-       6225/6226 to route it, leaving the trailing-space lines untouched.
-     - Requires MBasic 1.2 for the DIM fix, without which "-abbrev NAME" does
-       nothing: the abbreviations are read during argument processing and
-       were erased when control reached the dim block (and a file of more
-       than ten entries faulted first).
-     - New t/12_game_fixes.t covers all three.
 
 1.1  2026-09-19
      Fixes and hardening from an external review (Claude Opus 5.0).  Requires
