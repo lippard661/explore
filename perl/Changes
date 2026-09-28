@@ -20,8 +20,20 @@ Revision history for Explore (Perl distribution)
        four lines, so this is an original defect rather than a transcription
        or porting error; the internal evidence is that BASIC strings were not
        blank-padded (only h9$, which comes back from a PL/I helper, is
-       trimmed at line 45), so the bare word really could not match.  Added
-       6225/6226 to route it, leaving the trailing-space lines untouched.
+       trimmed at line 45), so the bare word really could not match.  6230
+       and 6240 now match the word without the trailing blank; "saveXYZ" is
+       still rejected, because 8970/8980 and 9390/9400 test exactly.
+
+     Both changes are deliberately frugal with FORWARD references.  The
+     Multics BASIC compiler allows only about 100 goto/then targets that are
+     defined later in the program, and the game is near that limit -- an
+     earlier version of these fixes added four and the compiler rejected it
+     with "ERROR - 36, Severity 3 ... Too many missing lines".  Rewriting
+     6230/6240 in place adds none (their targets are unchanged), and the
+     "get all" guard adds exactly one.  For the same reason the presence loop
+     at 7240 is left alone: guarding it too would report "There is nothing
+     here to get!" in a room holding only markers, but would cost a second
+     forward reference.  As it stands such a room simply takes nothing.
      - "-abbrev NAME" works again, given MBasic 1.3: the abbreviations are
        read during argument processing and were erased when control reached
        the dim block (and a file of more than ten entries faulted first).

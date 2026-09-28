@@ -685,10 +685,8 @@
 6200 if y$="throw" then 11970
 6210 if sst$(y$,1,5)="throw" then 18310
 6220 if y$="what" then 7940
-6225 if y$="save" then 8920 ' ADDED 2026: bare "save" -> default name (9020)
-6226 if y$="restore" then 9350 ' ADDED 2026: bare "restore" -> default (9420)
-6230 if sst$(y$,1,5)="save " then 8920
-6240 if sst$(y$,1,8)="restore " then 9350
+6230 if sst$(y$,1,4)="save" then 8920 ' MODIFIED 2026: was "save " (see 8970)
+6240 if sst$(y$,1,7)="restore" then 9350 ' MODIFIED 2026: was "restore "
 6250 if y$="news" then 8700
 6260 if y$="score" then 5521
 6270 if y$="nilrem" then 12490
@@ -791,8 +789,7 @@
 7220 next x
 7230 goto 6610
 7240 for x = 1 to x5
-7250 if a(x) <> a then 7260 ' MODIFIED 2026: was "if a(x) = a then 7280"
-7255 if len(d$(x)) <> 0 then 7280 ' ADDED 2026: a marker is not "something here"
+7250 if a(x) = a then 7280
 7260 next x
 7270 goto 6880
 7280 for x = 1 to x5
