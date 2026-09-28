@@ -49,7 +49,7 @@ perl/share directories.
 A Legion of Dynamic Discord-signed OpenBSD package of the perl version is
 distributed from:
 
-https://www.discord.org/lippard/software/OpenBSD-packages/
+https://discord.org/lippard/software/OpenBSD-packages/
 
 Install it on OpenBSD with pkg_add. The package is architecture-independent,
 so the same file also installs on macOS or Linux using my install.pl script:
@@ -58,7 +58,7 @@ https://github.com/lippard661/distribute
 
 The public key for the signing key for the package is:
 
-https://www.discord.org/lippard/software/discord.org-2026-pkg.pub
+https://discord.org/lippard/software/discord.org-2026-pkg.pub
 
 ## Artifacts
 
