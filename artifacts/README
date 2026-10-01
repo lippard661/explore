@@ -1,5 +1,6 @@
-This folder contains artifacts derived from three lineprinter documents, and the
-distributed game contains one derived from the fourth:
+This folder contains artifacts derived from three lineprinter documents and one
+piece of lineprinter mail, and the distributed game contains one derived from a
+fourth document:
 
 The file >user_dir_dir>MED>Kaiser>Lippard>exp_dir>explore.basic.1,
    printed by Lippard.Scouting.a on 06/27/80 2047.7 mst Fri, 36 pages,
@@ -33,6 +34,29 @@ The winners.data distributed on this site was also an artifact from
    >user_dir_dir>MED>Kaiser>Lippard>explore_dir>temp>winners.data,
    printed by Lippard.Scouting.a on 11/03/80 0127.4 mst Mon, 1 page,
    17 lines (and sent to "Sta W DVCP" unlike the other listings.
+
+The mail, rather than a listing of a file:
+
+The Multics mail message explore.mail.1980-08-13, transcribed from the
+   photograph explore.mail.1980-08-13.jpeg, was message #15 in a lineprinter
+   listing of mail received by Lippard.Scouting. It was sent on 13 August
+   1980 18:12 mst by Akers.SCUdmp -- Scott Akers, an advisor to Explorers
+   Post 414 -- cc'd to Perrine.sct, and reports a bug in the cellar of the
+   shack. It is the only surviving evidence that the game continued past
+   5.3: it refers to version 6.1 as "no longer supported" and to 7.0 as
+   current. The 6.0 database was therefore not merely aspirational, and at
+   least two further versions were written and were in the hands of players.
+
+   The bug it describes is not present in the reconstructed 5.3, where going
+   north from the cellar is correctly refused whether the flashlight is on
+   or off (the room's exit table gives it only east and up). The clearing he
+   landed in is where north leads from the room above the cellar, so the
+   symptom looks like a wrong-room exit lookup on the dark-movement path,
+   introduced somewhere in 6.x -- consistent with his own question about
+   whether it had been found in a prior version.
+
+   The photograph is a crop of the original page, which also carries an
+   unrelated message #14; tones are unaltered.
 
 Everything else in the repo was reconstructed from these artifacts, memory, and
 inference from these artifacts.

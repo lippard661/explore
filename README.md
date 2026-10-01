@@ -17,9 +17,11 @@ Multics System M in Phoenix and was mainly used by his fellow members of
 the Honeywell-sponsored Explorers Post 414. A simpler version for the personal
 computers of the day was created by Dale Buhanan. A hall-of-fame tablet in
 the game still lists its 1979-1980 winners including a few who played the
-PC version. The game went through multiple revisions (4.3, 5.3, and an
-anticipated 6.0 version for which the game database was created but no
-code was written).
+PC version. The game went through multiple revisions. Listings survive for
+4.3 and 5.3, and for the 6.0 game database; an August 1980 mail message from
+a Post advisor (see artifacts/) refers to version 6.1 as already superseded
+and to 7.0 as current, so development continued at least that far, though no
+code from those later versions is known to survive.
 
 In 2026 the game was reconstructed for the Multics simulator from 1980 line
 printer output of the BASIC source (5.3), the game database (6.0), and a
@@ -63,10 +65,11 @@ https://discord.org/lippard/software/discord.org-2026-pkg.pub
 ## Artifacts
 
 The artifacts/ directory contains historical materials: the 6.0 game
-database (aspirational; no 6.0 version of the game was made), the
-original transcribed BASIC 5.3 source, preserved for reference, and a
-complete playthrough of an earlier 4.3 version, which has some minor
-differences but major spoilers.
+database, the original transcribed BASIC 5.3 source, preserved for
+reference, a complete playthrough of an earlier 4.3 version, which has
+some minor differences but major spoilers, and a bug report mailed by a
+Post advisor in August 1980 -- the only surviving evidence that the game
+went on past 5.3, since it mentions versions 6.1 and 7.0.
 
 ## Credits
 
