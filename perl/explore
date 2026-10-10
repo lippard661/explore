@@ -15,6 +15,11 @@ BEGIN {
         if $< != $> || $rgid != $egid;
 }
 
+# Write the game's output as it is produced.  Perl block-buffers a pipe or a
+# file, so a session that was redirected showed nothing at all if it was later
+# killed or hung -- the player's whole transcript sat unflushed in the buffer.
+$| = 1;
+
 # (The umask for shared play is set further down, once we know whether a
 # writable shared directory is actually in use; see _seed_var_dir.)
 
@@ -59,16 +64,27 @@ my @prefix;                                          # extra --prefix M=U pairs
 # "--" ends option processing: everything after it goes to the game verbatim.
 # That is the escape hatch for the one ambiguous case, a game argument or
 # pathname that itself begins with "--".
+#
+# Each option below takes a value, and a missing one must be refused here: an
+# unchecked "shift @ARGV" at the end of the command line yields undef, which
+# surfaced much later as a string of "Use of uninitialized value" warnings from
+# the runner and from the path translator, or as a failure against a default
+# directory the player had just tried to override.
 my @gameargs;
+my $value = sub {
+    my ($opt) = @_;
+    die "explore: option $opt requires an argument (try --help)\n" unless @ARGV;
+    return shift @ARGV;
+};
 while (@ARGV) {
     my $f = shift @ARGV;
     if    ($f eq '--')        { push @gameargs, splice(@ARGV); last; }
-    elsif ($f eq '--share')   { $sharedir = shift @ARGV; }
-    elsif ($f eq '--var')     { $vardir   = shift @ARGV; }
-    elsif ($f eq '--basic')   { $basic    = shift @ARGV; }
-    elsif ($f eq '--helpers') { $helpers  = shift @ARGV; }
-    elsif ($f eq '--root')    { $root     = shift @ARGV; }
-    elsif ($f eq '--prefix')  { push @prefix, shift @ARGV; }  # "MULTICS=/unix"
+    elsif ($f eq '--share')   { $sharedir = $value->($f); }
+    elsif ($f eq '--var')     { $vardir   = $value->($f); }
+    elsif ($f eq '--basic')   { $basic    = $value->($f); }
+    elsif ($f eq '--helpers') { $helpers  = $value->($f); }
+    elsif ($f eq '--root')    { $root     = $value->($f); }
+    elsif ($f eq '--prefix')  { push @prefix, $value->($f); }  # "MULTICS=/unix"
     elsif ($f eq '--help') {
         print <<"USAGE";
 usage: explore [options] [game-arguments...]
@@ -118,7 +134,10 @@ Explore::Builtins::add_prefix('>site>explore_dir', $sharedir);
 # any user-supplied --prefix M=U pairs (later ones are still longest-first)
 for my $spec (@prefix) {
     my ($m, $u) = split /=/, $spec, 2;
-    die "bad --prefix (want MULTICS=/unix): $spec\n" unless defined $u;
+    # An empty Multics prefix would match at the front of every Multics-absolute
+    # path (index($p, '>') == 0) and silently redirect the lot.
+    die "bad --prefix (want MULTICS=/unix): $spec\n"
+        unless defined $u && defined $m && length $m;
     Explore::Builtins::add_prefix($m, $u);
 }
 
