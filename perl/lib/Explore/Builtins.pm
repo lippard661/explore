@@ -182,10 +182,16 @@ sub exp_lock_ {
     my $can = (-e $path) ? (-w $path) : (-w _dirname($path));
     unless ($can) { $args->[2]->set(-1); return; }
     my $fh;
-    # O_NOFOLLOW refuses a planted symlink at the lock path; 0666 lets the umask
-    # (the runner sets 0002 for shared play) decide the shared/group bits, so a
-    # lock file is not created 0644 and thus unwritable by the next player.
-    unless (sysopen($fh, $path, O_RDWR | O_CREAT | O_APPEND | O_NOFOLLOW_, 0666)) {
+    # O_NOFOLLOW refuses a planted symlink at the lock path.  A lock file lives
+    # in the shared data directory and must be writable by the next player, so
+    # widen the umask for just this create: the runner no longer carries a
+    # process-wide 0002 (which also loosened the player's own private files),
+    # and without this a 0022 player would create the lock 0644 and lock
+    # everyone else out.
+    my $oldmask = umask 0002;
+    my $opened  = sysopen($fh, $path, O_RDWR | O_CREAT | O_APPEND | O_NOFOLLOW_, 0666);
+    umask $oldmask if defined $oldmask;
+    unless ($opened) {
         $args->[2]->set(-1); return;
     }
     if (flock($fh, LOCK_EX | LOCK_NB)) {

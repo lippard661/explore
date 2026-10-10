@@ -15,11 +15,8 @@ BEGIN {
         if $< != $> || $rgid != $egid;
 }
 
-# New files the game creates (lock/registry/message files, seeded data) should
-# be group-writable so other players in a shared game can use them; a 0002
-# umask gives 0664/0775.  (MBasic and the lock code create with mode 0666, so
-# the umask decides the group/other bits.)
-umask 0002;
+# (The umask for shared play is set further down, once we know whether a
+# writable shared directory is actually in use; see _seed_var_dir.)
 
 # Restore default SIGINT handling at exit (quit_off sets it to IGNORE and an
 # abnormal path might not reach quit_on).
@@ -33,6 +30,7 @@ use if defined $ENV{MBASIC_LIB}, lib => ($ENV{MBASIC_LIB} // '');
 use MBasic::Interp;
 use MBasic::Registry;
 use Explore::Builtins;
+use Fcntl qw(O_WRONLY O_CREAT O_EXCL);
 
 # --- defaults (overridable by options / environment) -----------------------
 #   The game's read-only content lives at SHAREDIR, its read-write data at
@@ -144,6 +142,24 @@ $registry->register('exec_com', sub { });
 # directory (where the masters live), so it plays; it simply does not record
 # wins or enable multiplayer.
 my $writable = _seed_var_dir($sharedir, $vardir);
+
+# Shared play needs the files in the writable data directory to be
+# group-writable, so that the next player can update them; a 0002 umask gives
+# 0664/0775, and MBasic and the lock code create with mode 0666 so the umask
+# decides the group and other bits.  That is deliberate for the shared
+# directory -- but it used to be set process-wide, which also loosened the
+# files a player creates for THEMSELVES: saved games in the current directory,
+# .explore_abbrev and start_up.explore in $HOME.  On a system whose users share
+# a default group (staff, on macOS) that made a player's saved games writable
+# by every other local user, whatever umask they had chosen.
+#
+# So widen it only when a writable shared directory is really in play -- which
+# is the deployment the administrator opted into by creating the directory.  A
+# single player with no shared directory keeps their own umask, and the two
+# places that must have group-writable files regardless (the seeding below and
+# exp_lock_) set it narrowly around their own creates.
+umask 0002 if $writable;
+
 unless ($writable) {
     require File::Temp;
     my ($fh, $tmp) = File::Temp::tempfile(UNLINK => 1);
@@ -180,16 +196,31 @@ sub _seed_var_dir {
         eval { require File::Path; File::Path::make_path($var); 1 } or return 0;
     }
     return 0 unless -w $var;
+    # Group-writable for shared play, matching the manual PERMISSIONS
+    # instructions, whatever umask the player happens to be using.
+    my $oldmask = umask 0002;
     for my $name (qw(hours.data winners.data)) {
         my $dst = "$var/$name";
         my $src = "$share/$name";
-        # copy the master in only if it is missing.  File::Copy::copy does not
-        # preserve mode, so set the working copy group-writable (0664 & ~umask)
-        # for shared play -- matching the manual PERMISSIONS instructions.
-        if (!-e $dst && -e $src) {
-            File::Copy::copy($src, $dst) and chmod(0664 & ~umask, $dst);
+        next unless -e $src;
+        # Create the copy with O_CREAT|O_EXCL|O_NOFOLLOW rather than testing
+        # -e first.  The shared directory is group-writable by design, and the
+        # old "!-e $dst && -e $src" pair both raced and followed symlinks: -e
+        # follows, so a DANGLING symlink planted at hours.data read as absent
+        # and the copy -- and the chmod after it -- went straight through to
+        # whatever the link named, creating a file outside the directory as
+        # the player.  Every other file operation in this game is hardened
+        # this way; this one had been missed.  O_EXCL also makes "only if
+        # missing" atomic, and the mode now comes from the create (0666 & the
+        # 0002 umask above = 0664), so no chmod is needed at all.
+        next unless sysopen(my $fh, $dst,
+                            O_WRONLY | O_CREAT | O_EXCL
+                              | Explore::Builtins::O_NOFOLLOW_(), 0666);
+        unless (File::Copy::copy($src, $fh) && close $fh) {
+            close $fh; unlink $dst;         # leave no truncated master behind
         }
     }
+    umask $oldmask if defined $oldmask;
     return 1;
 }
 
