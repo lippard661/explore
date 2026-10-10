@@ -8,6 +8,23 @@ use Explore::Builtins;
 my $dir = tempdir(CLEANUP => 1);
 $Explore::Builtins::ROOT = $dir;
 
+# Run $code with the process's STDOUT (the file descriptor, so that a child
+# process's output is caught too) redirected to $file, and return what landed
+# there.  Needed for the builtins that hand an external program the terminal.
+sub _capturing_stdout {
+    my ($file, $code) = @_;
+    open my $save, '>&', \*STDOUT or die "dup STDOUT: $!";
+    open STDOUT, '>', $file       or die "redirect STDOUT: $!";
+    my $ok = eval { $code->(); 1 };
+    my $err = $@;
+    open STDOUT, '>&', $save      or die "restore STDOUT: $!";
+    close $save;
+    die $err unless $ok;
+    open my $r, '<', $file or return '';
+    local $/; my $got = <$r>; close $r;
+    return defined $got ? $got : '';
+}
+
 sub run {
     my ($lines, %opt) = @_;
     my $reg = MBasic::Registry->new;
@@ -116,9 +133,15 @@ is($SIG{INT}, 'DEFAULT', 'quit_on restores SIGINT default');
     open $r,'<',$af; my $c=do{local $/;<$r>}; close $r;
     is($c, "data\n", 'abc is a no-op (file unchanged)');
 
-    # do -> command execution (echo, captured to output sink)
-    my $out = run(['10 call "do": "echo hello_from_do"', '20 end']);
-    like($out, qr/hello_from_do/, 'do executes a shell command');
+    # do -> command execution.  The child is handed the terminal rather than a
+    # capture buffer, so that output streams, a pager or an editor behaves, and
+    # a command with unbounded output cannot exhaust memory.  Its output
+    # therefore arrives on the process's real STDOUT, which means catching it
+    # here needs a file-descriptor redirect, not an output sink.
+    my $got = _capturing_stdout("$dir/do.out", sub {
+        run(['10 call "do": "echo hello_from_do"', '20 end']);
+    });
+    like($got, qr/hello_from_do/, 'do executes a shell command');
 }
 
 # --- mult_path containment: reject parent-directory traversal ---
