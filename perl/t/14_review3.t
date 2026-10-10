@@ -4,6 +4,7 @@ use Test::More;
 use File::Temp qw(tempdir);
 use MBasic::Interp; use MBasic::Registry;
 use Explore::Builtins;
+use POSIX ();
 
 # Regression tests for the third review pass: crashes, hangs and permission
 # problems in the runner and in its interaction with the interpreter.
@@ -42,15 +43,66 @@ my $share   = "$FindBin::Bin/../share";
 my @inc     = ('-I', "$FindBin::Bin/../lib");
 push @inc, ('-I', $ENV{MBASIC_LIB}) if $ENV{MBASIC_LIB};
 
+# Run the runner as a child process, under a deadline, and never hang.
+#
+# The tests below that need a whole game session must not be able to stop
+# "make test", whatever is installed.  That is not hypothetical: on MBasic 1.3
+# the game's command loop spins at its prompt forever once its input is
+# exhausted -- the bug MBasic 1.4 fixes -- so a session ended by closing stdin
+# never returns.  These sessions are therefore ended with a "quit" command
+# rather than by exhausting the input, and the deadline is a backstop that
+# turns any future hang into a failed test instead of a stuck suite.
+#
+# Returns ($exited_on_its_own, $combined_output).
+sub run_runner {
+    my (%a) = @_;
+    my $log = $a{log} || "$dir/runner.log";
+    my $in  = $a{input};
+    if (defined $in) {
+        my $f = "$dir/runner.in";
+        open my $w, '>', $f or die "write $f: $!"; print $w $in; close $w;
+        $in = $f;
+    }
+    my $pid = fork;
+    die "fork: $!" unless defined $pid;
+    unless ($pid) {
+        chdir $a{cwd} if defined $a{cwd};
+        $ENV{HOME} = $a{home} if defined $a{home};
+        umask $a{umask} if defined $a{umask};
+        open STDIN,  '<', (defined $in ? $in : '/dev/null');
+        open STDOUT, '>', $log;
+        open STDERR, '>&', \*STDOUT;
+        exec $^X, @inc, $runner, @{ $a{args} || [] };
+        POSIX::_exit(127);
+    }
+    my $deadline = time + ($a{timeout} || 60);
+    my $exited = 0;
+    while (1) {
+        my $r = waitpid($pid, POSIX::WNOHANG());
+        if ($r == $pid || $r == -1) { $exited = 1; last }
+        last if time >= $deadline;
+        select undef, undef, undef, 0.05;
+    }
+    unless ($exited) { kill 'KILL', $pid; waitpid $pid, 0; }
+    my $out = '';
+    if (open my $r, '<', $log) { local $/; $out = <$r> // ''; close $r; }
+    unlink $log;
+    return ($exited, $out);
+}
+
 # ==== R3-1: end of input must not become an endless empty word ==============
 # The game retries the sorcerer prompt for as long as the word is empty
 # (explore.basic 9770-9810), so returning '' at end of input span the prompt
 # forever, silently -- the prompt carries no newline.
 {
-    open my $devnull, '<', '/dev/null' or plan skip_all => 'no /dev/null';
+    # Reopen the DESCRIPTOR, not just the glob: _read_noecho tests -t STDIN and
+    # reads <STDIN>, and the harness may hand this test a terminal or a pipe
+    # that never closes, either of which would block here rather than reach
+    # end of input.  Restored from a saved dup afterwards.
+    open my $save_in, '<&', \*STDIN  or plan skip_all => 'cannot dup STDIN';
+    open STDIN, '<', '/dev/null'     or plan skip_all => 'no /dev/null';
     my $writes = 0;
     my $ok = eval {
-        local *STDIN = $devnull;
         run(['10 let q$ = "            "',
              '20 call "exp_getpw_": "Magic word, please:", q$',
              '30 if len(q$)=0 then 10',
@@ -59,6 +111,8 @@ push @inc, ('-I', $ENV{MBASIC_LIB}) if $ENV{MBASIC_LIB};
         1;
     };
     my $err = $ok ? '' : $@;
+    open STDIN, '<&', $save_in or die "restore STDIN: $!";
+    close $save_in;
     unlike($err, qr/SPUN/, 'R3-1 exp_getpw_ at end of input does not spin');
     like($err, qr/Not enough input/,
          'R3-1 and reports the same condition MBasic uses for LINPUT');
@@ -128,14 +182,14 @@ ED
 SKIP: {
     skip 'runner not found', 1 unless -f $runner;
     for my $opt (qw(--share --var --basic --helpers --root --prefix)) {
-        my $err = qx{$^X @{[join ' ', @inc]} $runner $opt 2>&1 >/dev/null};
+        my (undef, $err) = run_runner(args => [$opt], timeout => 30);
         like($err, qr/option \Q$opt\E requires an argument/,
              "R3-6 $opt with no value is refused cleanly");
         unlike($err, qr/uninitialized value/,
                "R3-6 $opt does not leak uninitialized-value warnings");
     }
     # an empty Multics prefix would match every absolute path
-    my $err = qx{$^X @{[join ' ', @inc]} $runner --prefix =/tmp 2>&1 >/dev/null};
+    my (undef, $err) = run_runner(args => ['--prefix', '=/tmp'], timeout => 30);
     like($err, qr/bad --prefix/, 'R3-6 an empty --prefix prefix is refused');
 }
 
@@ -152,7 +206,8 @@ SKIP: {
     symlink($target, "$var/hours.data") or skip 'cannot symlink', 2;
     my $home = "$dir/home"; mkdir $home;
     my $play = "$dir/play"; mkdir $play;
-    qx{cd $play && HOME=$home $^X @{[join ' ', @inc]} $runner --share $share --var $var </dev/null >/dev/null 2>&1};
+    my ($exited) = run_runner(cwd => $play, home => $home, input => "quit\nyes\n",
+                              args => ['--share', $share, '--var', $var]);
     ok(!-e $target, 'R3-7 seeding does not write through a planted symlink');
     ok(-f "$var/winners.data",
        'R3-7 the unplanted master is still seeded, as a regular file');
@@ -172,10 +227,9 @@ SKIP: {
     # unwritable directory would not stop root.
     my $blocker = "$dir/a_file_not_a_dir";
     open my $bf, '>', $blocker or skip 'cannot create blocker', 1; close $bf;
-    qx{cd $play && umask 0022 && HOME=$home $^X @{[join ' ', @inc]} $runner --share $share --var $blocker/nope >/dev/null 2>&1 <<'IN'
-save private_game
-IN
-};
+    run_runner(cwd => $play, home => $home, umask => 0022,
+               input => "save private_game\nquit\nyes\n",
+               args => ['--share', $share, '--var', "$blocker/nope"]);
     my $saved = "$play/private_game.explore";
     SKIP: {
         skip 'the save did not happen in this environment', 1 unless -e $saved;

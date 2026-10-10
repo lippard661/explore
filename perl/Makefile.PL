@@ -14,7 +14,10 @@ WriteMakefile
      LICENSE       => 'bsd',
      MIN_PERL_VERSION => '5.008',
      PREREQ_PM     => {
-         'MBasic'      => '1.0',   # the interpreter (separate distribution)
+         # The interpreter (separate distribution).  1.4 is the floor because
+         # on earlier releases the game's command loop spins at its prompt
+         # forever instead of stopping when its input is exhausted.
+         'MBasic'      => '1.4',
          'Fcntl'       => 0,
          'File::Copy'  => 0,
          'File::Path'  => 0,
