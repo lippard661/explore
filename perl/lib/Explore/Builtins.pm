@@ -73,6 +73,14 @@ sub mult_path {
     if ($p =~ m{(?:\A|[>/])\.\.(?:[>/]|\z)} || $p =~ /</) {
         die "Invalid pathname (path traversal not allowed): $p\n";
     }
+    # A NUL would otherwise travel on to sysopen and stat, which merely warn
+    # about it -- "Invalid \0 character in pathname for ftfile: ..." -- spilling
+    # the interpreter's own source file and line numbers onto the player's
+    # screen and then failing obscurely.  (Not interpolated: it has a NUL in
+    # it.)
+    if ($p =~ /\0/) {
+        die "Invalid pathname (embedded null character)\n";
+    }
 
     return $p unless $p =~ />/;           # no '>' anywhere -> already Unix
 
@@ -208,9 +216,17 @@ sub exp_getpw_ {
     # print the prompt (no newline), read a line with echo off
     ($ctx->{out} || sub { print $_[0] })->($prompt);
     my $word = _read_noecho();
+    # End of input is not an empty word.  The game retries for as long as the
+    # word is empty (explore.basic 9770-9810), so handing back '' here spun the
+    # prompt forever once stdin closed -- silently, since the prompt is written
+    # without a newline.  MBasic's LINPUT ends the run in the same situation and
+    # in the same words.
+    die "Not enough input, add more\n" unless defined $word;
     $args->[1]->set($word);
     return;
 }
+# Returns undef at end of input, which the caller must not confuse with an
+# empty line; see exp_getpw_ above.
 sub _read_noecho {
     my $line;
     if (-t STDIN) {
@@ -233,7 +249,7 @@ sub _read_noecho {
         $line = <STDIN>;                    # non-tty (tests / pipes): no echo issue
     }
     chomp $line if defined $line;
-    return defined $line ? $line : '';
+    return $line;
 }
 
 # ---- quit_off / quit_on : control the interrupt (break) key ----
@@ -254,13 +270,61 @@ sub quit_on  { my ($ctx,$args)=@_; $SIG{INT} = 'DEFAULT'; return; }
 #  mult_path.  Multics command flags (like "-brief") are ignored on Unix.
 # ============================================================================
 
+# ---- _run_child(@argv) : run an external program on the player's terminal ----
+#
+# Two things the old backticks got wrong, both fixed by handing the child the
+# terminal instead of a capture buffer:
+#
+#   * `$cmd 2>&1` accumulated the WHOLE output in memory before the player saw
+#     any of it, so a command with unbounded output ("..yes", "..cat" of
+#     something large, "..find /") ended the session with "Out of memory!" --
+#     reachable by accident, not just deliberately.  Now output streams, and
+#     a pager or an editor behaves as it should.
+#
+#   * SIGINT.  quit_off installs SIG_IGN, and an ignored disposition survives
+#     execve, so under ^quit mode a command inherited the ignore and could not
+#     be interrupted at all.  The child now gets the default disposition back
+#     while the game ignores SIGINT for as long as the child runs.  Both are in
+#     the same foreground process group, so one ^C reaches both: the command
+#     dies, the game does not, and the player is returned to the game's command
+#     line.  That needs no job control and no tcsetpgrp.  Afterwards the game's
+#     own disposition -- whichever of quit_off/quit_on last set it -- is
+#     restored, so ^quit still disables break for the game itself.
+sub _run_child {
+    my ($ctx, @argv) = @_;
+    return unless @argv && defined $argv[0] && length $argv[0];
+    my $prev_int  = $SIG{INT};
+    my $prev_quit = $SIG{QUIT};
+    $SIG{INT} = $SIG{QUIT} = 'IGNORE';
+    my $pid = fork;
+    if (!defined $pid) {
+        warn "explore: cannot run $argv[0]: fork failed: $!\n";
+    }
+    elsif (!$pid) {                       # child
+        $SIG{INT} = $SIG{QUIT} = 'DEFAULT';
+        exec { $argv[0] } @argv;
+        warn "explore: cannot execute $argv[0]: $!\n";
+        # _exit, not exit: END blocks belong to the parent (File::Temp would
+        # unlink the read-only rwdir file the parent is still using).
+        eval { require POSIX; POSIX::_exit(127); 1 } or CORE::exit(127);
+    }
+    else {
+        while (1) {                       # wait, without tripping over EINTR
+            my $r = waitpid($pid, 0);
+            last if $r == $pid || $r == -1;
+        }
+    }
+    $SIG{INT}  = defined $prev_int  ? $prev_int  : 'DEFAULT';
+    $SIG{QUIT} = defined $prev_quit ? $prev_quit : 'DEFAULT';
+    return;
+}
+
 # do "command line"  -> execute a shell command (the .. / m command escape)
 sub cmd_do {
     my ($ctx, $args) = @_;
     my $cmd = $args->[0]->get;
-    # run it, sending output to the game's output sink if captured
-    my $result = `$cmd 2>&1`;
-    ($ctx->{out} || sub { print $_[0] })->($result) if defined $result && length $result;
+    return unless defined $cmd && $cmd =~ /\S/;
+    _run_child($ctx, '/bin/sh', '-c', $cmd);
     return;
 }
 
@@ -330,8 +394,12 @@ sub cmd_ted {
     my ($path) = grep { $_ !~ /^-/ } @a;
     return unless defined $path;
     $path = mult_path($path);
-    my $editor = $ENV{EDITOR} || _first_in_path('ed','vi') || 'ed';
-    system($editor, $path);
+    # $EDITOR commonly carries arguments ("vim -u NONE", "emacs -nw").  Passing
+    # the whole string as the program name tried to execute a file of that
+    # literal name and silently failed, so split it into words.
+    my @editor = defined $ENV{EDITOR} ? split(' ', $ENV{EDITOR}) : ();
+    @editor = (_first_in_path('ed','vi') || 'ed') unless @editor;
+    _run_child($ctx, @editor, $path);
     return;
 }
 sub _first_in_path {
