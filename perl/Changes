@@ -1,5 +1,79 @@
 Revision history for Explore (Perl distribution)
 
+1.4  2026-10-09
+     Fixes at the direction of Jim Lippard by Claude Opus 5.0, from a review
+     of the runner and its interaction with the interpreter.  Requires
+     MBasic 1.4, which ends a run when terminal LINPUT finds the input
+     exhausted instead of returning empty lines forever -- without that, the
+     game's command loop spun at its prompt at 99% CPU, writing "? " without
+     bound, after something as ordinary as feeding it a command file or a
+     ".." escape that consumed the rest of stdin.
+     - External commands (the ".."/"m" escape and the abbrev editor) run on
+       the player's terminal rather than through backticks.  The output used
+       to be accumulated in memory before the player saw any of it, so a
+       command with unbounded output ended the session with "Out of memory!"
+       -- reachable by accident, not just deliberately.  Output now streams,
+       memory is bounded, and a pager or an interactive program behaves.
+     - An external command can be interrupted without taking the game with
+       it.  quit_off installs an ignored SIGINT, and an ignored disposition
+       survives execve, so under "-modes ^quit" a command inherited the
+       ignore and could not be interrupted at all.  The child now gets the
+       default disposition back while the game ignores SIGINT for as long as
+       the child runs: one ^C reaches both, the command dies, the game
+       carries on at its command line.  ^quit still disables break for the
+       game itself.
+     - The "send" command sends something.  The game calls send_message with
+       the recipient only, because on Multics it then read the message from
+       the terminal; the builtin expected the text as a second argument, so
+       it piped `write` a bare newline and nothing could ever be sent.
+     - The sorcerer prompt ends the run at end of input instead of treating
+       it as an empty word, which the game retries forever and in silence.
+     - Seeding the writable data directory no longer follows a symlink
+       planted there.  "!-e $dst" follows the link, so a dangling one read as
+       absent and the copy -- and the chmod after it -- went through it,
+       creating a file outside the directory as the player.  The copy is now
+       created O_CREAT|O_EXCL|O_NOFOLLOW like every other file operation
+       here, which also makes "only if missing" atomic.
+     - The 0002 umask for shared play is no longer process-wide, where it
+       also loosened the files a player creates for themselves -- saved games,
+       .explore_abbrev, start_up.explore.  On a system whose users share a
+       default group (staff, on macOS) that made a player's saved games
+       writable by every other local user.  It is now applied only when a
+       writable shared directory is in use, and narrowly around the seeding
+       and lock-file creates that need it.
+     - A missing option value is refused where it happens, naming the option,
+       instead of yielding undef and a run of uninitialized-value warnings.
+       An empty Multics prefix in --prefix is refused too: it matched the
+       front of every absolute path and silently redirected all of them.
+     - Game output is unbuffered, so a redirected session that is killed or
+       that hangs still shows what happened.
+     - $EDITOR carrying arguments ("vim -u NONE") is split into words rather
+       than used as a single program name, which always failed.
+     - A NUL in a pathname is refused rather than passed to sysopen and stat,
+       which only warn about it and spill the interpreter's own file and line
+       numbers onto the player's screen.
+     Two 1980 game defects, both verbatim in artifacts/explore.basic.5.3 and
+     neither introduced nor missed by the 1.3 dispatcher fix -- that fix made
+     the BARE words work, while these are the words with a TRAILING SPACE and
+     nothing after them, which take the "extract a name" path and extract an
+     empty name:
+     - "restore " hung the game outright and in silence.  9440 extracted an
+       empty name and 9450 sent it back to 9390, which failed the exact
+       match, saw the space at 9400 and returned to 9440 to produce the same
+       empty name again, forever; nothing in that circuit changed anything or
+       printed.  An empty name now takes the default, as the bare word does.
+     - "save " saved to a file called just ".explore" while reporting "Game
+       saved.....".  9010 jumped over the "9040 if len(y1$)=0" guard that was
+       meant to catch this; 9040 is dead code in the 1980 listing too.
+     - A save or restore name that the path translator will refuse (a Multics
+       "<", or "..") is now refused by the game, which returns the player to
+       the prompt, rather than reaching the file statement where the refusal
+       is a die that ends the session and loses the game in progress.
+     The added BASIC jumps are all backward, leaving the compiler's peak
+     pending forward-reference count unchanged at 100, at line 7210 -- which
+     is where this program already sits against the limit of about 100, so
+     any new forward reference before 7210 will fail to compile on Multics.
+
 1.3  2026-09-28
      Fixes at the direction of Jim Lippard by Claude Opus 5.0.  The two game
      bugs below, and the MBasic DIM bug behind "-abbrev NAME", were found and

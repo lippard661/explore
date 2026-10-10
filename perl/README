@@ -7,13 +7,16 @@ output; this distribution runs that authentic reconstructed BASIC source,
 unmodified, on the MBasic interpreter (a separate distribution), so it plays
 on any modern Unix with Perl.
 
-The game version is 5.3; this Perl distribution is version 1.3.
+The game version is 5.3; this Perl distribution is version 1.4.
 
 REQUIREMENTS
 
-Perl 5.8+ and MBasic 1.3 or later (the Multics BASIC interpreter).
-Install MBasic first.  Earlier MBasic releases will run the game, but the
-"-abbrev NAME" option silently does nothing on them.
+Perl 5.8+ and MBasic 1.4 or later (the Multics BASIC interpreter).
+Install MBasic first.  Earlier MBasic releases will run the game, but on
+them the "-abbrev NAME" option silently does nothing (before 1.3), and the
+command loop spins at its prompt forever instead of stopping when its input
+is exhausted -- after a redirected or piped session, or a ".." escape that
+consumed the rest of the input (before 1.4).
 
 INSTALLATION (the Perl code)
 
