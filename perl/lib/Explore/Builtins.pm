@@ -369,13 +369,39 @@ sub cmd_sort_seg {
     return;
 }
 
-# send_message "user", "text"  -> Unix `write` to another logged-in user
+# send_message "user" [, "text"]  -> Unix `write` to another logged-in user
+#
+# The game calls this with the RECIPIENT ONLY (explore.basic 15820:
+# call "send_message": y1$), because on Multics send_message then entered input
+# mode and read the message from the terminal.  Piping it the absent second
+# argument therefore sent a bare newline, and the "send" command could never
+# deliver anything at all.  With no text argument we now hand `write` the
+# terminal, which reads the message the same way Multics did; a caller that does
+# supply the text still gets the non-interactive pipe.
 sub cmd_send_message {
     my ($ctx, $args) = @_;
-    my $user = $args->[0]->get;
-    my $text = defined $args->[1] ? $args->[1]->get : '';
-    # best-effort: pipe the text to `write user`; ignore failure (user not on)
-    if (open my $w, '|-', 'write', $user) { print $w "$text\n"; close $w; }
+    my $user = defined $args->[0] ? $args->[0]->get : undef;
+    return unless defined $user && $user =~ /\S/;
+    # Multics addressed people as Person.Project.  Unix has no project, so if
+    # the whole string is not a login but the part before the first dot is,
+    # send to that.
+    if (!defined getpwnam($user)) {
+        my ($person) = split /\./, $user, 2;
+        $user = $person if defined $person && length $person
+                        && defined getpwnam($person);
+    }
+    if (defined $args->[1]) {
+        my $text = $args->[1]->get;
+        # `write` may refuse and exit at once (recipient not logged in, mesg n),
+        # which would leave this print writing to a pipe with no reader.
+        local $SIG{PIPE} = 'IGNORE';
+        if (open my $w, '|-', 'write', $user) {
+            print $w (defined $text ? $text : ''), "\n";
+            close $w;
+        }
+        return;
+    }
+    _run_child($ctx, 'write', $user);
     return;
 }
 
