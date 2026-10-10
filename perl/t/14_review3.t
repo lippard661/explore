@@ -72,8 +72,11 @@ sub run_runner {
         open STDIN,  '<', (defined $in ? $in : '/dev/null');
         open STDOUT, '>', $log;
         open STDERR, '>&', \*STDOUT;
-        exec $^X, @inc, $runner, @{ $a{args} || [] };
-        POSIX::_exit(127);
+        # "or", not a following statement: a bare statement after exec draws
+        # "Statement unlikely to be reached" at compile time.  _exit rather
+        # than exit, so this child runs none of the parent's END blocks (the
+        # tempdir would be removed out from under the test).
+        exec($^X, @inc, $runner, @{ $a{args} || [] }) or POSIX::_exit(127);
     }
     my $deadline = time + ($a{timeout} || 60);
     my $exited = 0;
