@@ -967,6 +967,9 @@
 8930 if l<1 then 8960
 8940 print "There's no point in saving a demonstration game!"
 8950 goto 4050
+8952 rem ADDED 2026: shared refusal for a name the path translator rejects.
+8954 print "Sorry, but that is not a usable file name."
+8956 goto 4050
 8960 rem SAVE GAME
 8970 if y$="save" then 9020
 8980 if sst$(y$,5,1)=" " then 9000
@@ -982,6 +985,12 @@
 9048 rem name now takes the default, as the bare word does since 1.3.
 9050 let y$=".explore"
 9060 let y1$=y1$&y$
+9062 rem ADDED 2026: refuse here what the path translator refuses, so a typed
+9063 rem name cannot end the session.  ".explore" is already appended, so a
+9064 rem parent reference can only appear followed by a separator.
+9065 if pos(y1$,"<",1)>0 then 8954
+9066 if pos(y1$,"../",1)>0 then 8954
+9068 if pos(y1$,"..>",1)>0 then 8954
 9070 file #2: y1$
 9080 scratch #2
 9090 print #2: s;",";t;",";a;",";j0$;",";c9$;",";g0$;",";g6$
@@ -1030,6 +1039,10 @@
 9459 rem the default, as the bare word does since 1.3.
 9460 let y$=".explore"
 9470 let y1$=y1$&y$
+9472 rem ADDED 2026: same refusal as 9065-9068 on the save side
+9474 if pos(y1$,"<",1)>0 then 8954
+9476 if pos(y1$,"../",1)>0 then 8954
+9478 if pos(y1$,"..>",1)>0 then 8954
 9480 file #2: y1$
 9490 reset #2
 9500 if more #2 then 9530
