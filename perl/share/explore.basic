@@ -972,10 +972,14 @@
 8980 if sst$(y$,5,1)=" " then 9000
 8990 goto 6610 'I dont know that word
 9000 let y1$=sst$(y$,6,len(y$)-5)
-9010 goto 9050
+9010 goto 9040 ' MODIFIED 2026: was 9050, which jumped over 9040 entirely
 9020 let y1$ = "SAVED_GAME_.explore"
 9030 goto 9070
-9040 if len(y1$)=0 then 8920
+9040 if len(y1$)=0 then 9020 ' MODIFIED 2026: was 8920, and was unreachable;
+9042 rem "save " with a trailing space and nothing after it extracted an empty
+9044 rem name, so 9060 appended ".explore" to nothing and the game saved to a
+9046 rem file called just ".explore", reporting "Game saved.....".  An empty
+9048 rem name now takes the default, as the bare word does since 1.3.
 9050 let y$=".explore"
 9060 let y1$=y1$&y$
 9070 file #2: y1$
@@ -1018,7 +1022,12 @@
 9420 let y1$="SAVED_GAME_.explore"
 9430 goto 9480
 9440 let y1$=sst$(y$,9,len(y$)-7)
-9450 if len(y1$)=0 then 9390
+9450 if len(y1$)=0 then 9420 ' MODIFIED 2026: was 9390, an endless loop --
+9452 rem "restore " with a trailing space and nothing after it reached 9440,
+9454 rem extracted an empty name, came back to 9390, failed the exact match,
+9456 rem saw the space at 9400, returned to 9440 and produced the same empty
+9458 rem name again, forever and in complete silence.  An empty name now takes
+9459 rem the default, as the bare word does since 1.3.
 9460 let y$=".explore"
 9470 let y1$=y1$&y$
 9480 file #2: y1$
