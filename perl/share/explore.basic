@@ -2079,22 +2079,23 @@
 19050 print "To";
 19060 linput y1$
 19070 if len(y1$) = 0 then 4300
-19080 file #2: w9$ & ">explore_com"
-19090 call "exp_lock_": w9$ & ">explore_com.lock",a,x9
-19095 if x9 = -1 then 14280
-19100 if x9 = 0 then 19090
-19110 print "Message";
-19120 linput y$
-19130 if len(y$) = 0 then 19110
-19140 if y1$ <> "*" then 19150 ' MODIFIED 2026: was "= ... then 19180", which
-19142 rem left explore_com.lock held for the rest of the session
-19144 call "exp_unlock_": w9$ & ">explore_com.lock"
-19146 goto 19180
+19080 print "Message"; ' MOVED 2026: the message is typed BEFORE the lock is
+19085 rem taken (it used to be 19110, with 19090 holding explore_com.lock for
+19086 rem as long as the sorcerer took to type, which stalled every other
+19087 rem player's commands at 4980).
+19090 linput y$
+19095 if len(y$) = 0 then 19080
+19100 call "exp_lock_": w9$ & ">explore_com.lock",a,x9
+19110 if x9 = -1 then 14280
+19120 if x9 = 0 then 19100
+19130 file #2: w9$ & ">explore_com"
+19140 if y1$ = "*" then 19180
 19150 print #2: y1$;","&""""&y$&""""
 19160 call "exp_unlock_": w9$ & ">explore_com.lock"
 19170 goto 9870
 19180 file #3: w9$ & ">explore_usr"
-19190 if end #3 then 9870
+19190 if end #3 then 19160 ' MODIFIED 2026: was 9870, which left the lock held
+19195 rem after a "*" broadcast; 19160 releases it, then 19170 goes to 9870.
 19200 input #3: y1$,y,y0,y1
 19210 print #2: y1$;",";y$
 19220 goto 19190
@@ -2322,16 +2323,17 @@
 21310 if d(i) = a then 21340
 21320 print "explore (talk): User not in room. ";y$
 21330 goto 4950
-21340 file #2: w9$ & ">explore_usr_com"
-21350 call "exp_lock_": w9$ & ">explore_usr_com.lock",a,x9
-21355 if x9 = -1 then 14280
-21360 if x9 = 0 then 21350
-21370 print "Message";
-21380 linput q5$
-21390 if len(q5$) <> 0 then 21400 ' MODIFIED 2026: was "= 0 then 4950", which
-21392 rem left explore_usr_com.lock held for the rest of the session
-21394 call "exp_unlock_": w9$ & ">explore_usr_com.lock"
-21396 goto 4950
+21340 print "Message"; ' MOVED 2026: the message is typed BEFORE the lock is
+21345 rem taken (it used to be 21370, with 21350 holding explore_usr_com.lock
+21346 rem for as long as the player took to type -- and "talk" is an ORDINARY
+21347 rem player command, so any player could stall every other player's
+21348 rem commands at 4740 just by sitting at the "Message" prompt).
+21350 linput q5$
+21355 if len(q5$) = 0 then 4950
+21360 call "exp_lock_": w9$ & ">explore_usr_com.lock",a,x9
+21370 if x9 = -1 then 14280
+21380 if x9 = 0 then 21360
+21390 file #2: w9$ & ">explore_usr_com"
 21400 print #2: y$;",";usr$;","&""""&q5$&""""
 21410 call "exp_unlock_": w9$ & ">explore_usr_com.lock"
 21420 goto 4950
