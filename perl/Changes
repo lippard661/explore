@@ -1,5 +1,38 @@
 Revision history for Explore (Perl distribution)
 
+1.5  2026-10-29
+     Multiplayer lock fixes at the direction of Jim Lippard by Claude Opus
+     5.0, after he found two players wedging each other on OpenBSD.  Still
+     requires MBasic 1.4.
+     - The game releases its shared locks on every path out of a critical
+       section.  Three sections were left by a jump that skipped the release
+       (4550, 5080 and 11400 jump over the unlocks at 4630, 5200 and 11470)
+       and two more held a lock across a prompt and then left without it
+       (19140 on a sorcerer broadcast, 21390 on an empty "talk" message).
+       5080 was the damaging one: "no sorcerer message waiting" is the
+       ordinary path through every command, so the first player to type
+       anything kept explore_com.lock for as long as they stayed in the game,
+       and every other player then retried forever at 4990.  With two players
+       each holding one lock and waiting for the other's, both wedged until
+       one of them quit -- which is what was reported, and what reproduced
+       here with two accounts in a shared group.
+       The jumps are 1980 text, but the omission became a defect when the
+       lock was converted: the old exp_trfcc_/truncate scheme released before
+       the critical section, and exp_lock_.pl1 correctly replaced it with a
+       real set_lock_ held across the section -- but five paths never reach
+       the release.  The same five paths wedge the game on Multics, where the
+       helper holds a real lock too, so this is fixed in the BASIC rather than
+       worked around in the Perl runner, and both copies of explore.basic
+       carry it.
+     - exp_lock_ waits for a contended lock instead of reporting BUSY at
+       once.  The Multics exp_lock_.pl1 passes WAIT = 2 seconds to set_lock_;
+       the Perl version used a non-blocking flock, and since every caller
+       retries with a bare "if x9 = 0 then <lock again>", contention became a
+       tight spin -- 100% CPU for as long as the other player held the lock.
+       It now polls at 50ms for up to the same 2 seconds: with a lock
+       deliberately left held, the waiting player went from 2097 ticks of CPU
+       to 23.  This is a parity fix, not the deadlock fix.
+
 1.4  2026-10-09
      Fixes at the direction of Jim Lippard by Claude Opus 5.0, from a review
      of the runner and its interaction with the interpreter.  Requires

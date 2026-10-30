@@ -7,7 +7,7 @@ output; this distribution runs that authentic reconstructed BASIC source,
 unmodified, on the MBasic interpreter (a separate distribution), so it plays
 on any modern Unix with Perl.
 
-The game version is 5.3; this Perl distribution is version 1.4.
+The game version is 5.3; this Perl distribution is version 1.5.
 
 REQUIREMENTS
 
