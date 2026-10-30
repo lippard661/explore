@@ -167,6 +167,26 @@ sub exp_canwrite_ {
 }
 sub _dirname { my $p = shift; $p =~ s{/[^/]*$}{}; $p eq '' ? '.' : $p; }
 
+# Seconds to wait for a contended lock before reporting BUSY, matching the
+# WAIT constant in the Multics exp_lock_.pl1, and the poll interval.
+our $LOCK_WAIT     = 2;
+our $LOCK_POLL     = 0.05;
+
+# flock, waiting up to $LOCK_WAIT for a lock another process holds.  Polling
+# rather than a blocking LOCK_EX: the caller's contract is to report BUSY after
+# a bounded wait so the BASIC can retry (and so a player is never wedged
+# indefinitely by a lock nobody releases), which a blocking flock cannot do
+# portably -- alarm(2) around flock is not reliable everywhere.
+sub _flock_waiting {
+    my ($fh) = @_;
+    my $tries = int($LOCK_WAIT / $LOCK_POLL) || 1;
+    for my $n (0 .. $tries) {
+        return 1 if flock($fh, LOCK_EX | LOCK_NB);
+        select undef, undef, undef, $LOCK_POLL if $n < $tries;
+    }
+    return 0;
+}
+
 # ---- exp_lock_(path$, room, status) : 1=acquired, 0=busy, -1=error ----
 # Uses flock advisory locking, held across the caller's critical section; the
 # lock is released by exp_unlock_ (or on process exit).  Pre-check writability
@@ -194,7 +214,14 @@ sub exp_lock_ {
     unless ($opened) {
         $args->[2]->set(-1); return;
     }
-    if (flock($fh, LOCK_EX | LOCK_NB)) {
+    # Wait briefly for a lock another player genuinely holds, instead of
+    # reporting BUSY the instant it is taken.  The Multics exp_lock_.pl1 passes
+    # WAIT = 2 seconds to set_lock_ and only then returns BUSY; the caller's
+    # retry loops (4450, 4990, 11310, 19100, 21360) are bare "if x9 = 0 then
+    # <lock again>", so with a non-blocking flock they became tight spins --
+    # measured at 100% CPU for as long as the other player held the lock.
+    # Polling gives the same semantics as Multics at a negligible cost.
+    if (_flock_waiting($fh)) {
         $LOCKS{$path} = $fh;                 # hold the lock (and the handle)
         $args->[2]->set(1);                  # acquired
     } else {
