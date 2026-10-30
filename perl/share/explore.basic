@@ -508,10 +508,11 @@
 4670 if c$(i) = usr$ then 4720
 4680 if f(i) <> 1 then 4710
 4690 print "A tall sorcerer is standing here, with the name """;c$(i);"""";
-4691 print " on his dark robe."
+4691 print " on their dark robe." ' MODIFIED 2026: was "his"; the game
+4695 rem knows nothing about another player beyond their user name.
 4700 goto 4720
 4710 print "A person is standing nearby, with the name """;c$(i);"""";
-4711 print " on his shirt."
+4711 print " on their shirt." ' MODIFIED 2026: was "his" (see 4691)
 4720 next i
 4730 file #2: w9$ & ">explore_usr_com"
 4740 call "exp_lock_": w9$ & ">explore_usr_com.lock",a,x9
