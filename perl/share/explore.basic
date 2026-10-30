@@ -486,6 +486,10 @@
 4520 if c$(i) = usr$ then 4560
 4530 next i
 4540 print #2: usr$;",";a;",";s;",";s1;",";dat$;",";1
+4542 rem ADDED 2026: release the lock on this path too.  4550 jumps over the
+4544 rem unlock at 4630, so a player not yet listed in explore_usr held
+4546 rem explore_usr.lock for the rest of the session.
+4548 call "exp_unlock_": w9$ & ">explore_usr.lock"
 4550 goto 4640
 4560 let d(i) = a
 4570 let e(i) = s
@@ -548,6 +552,11 @@
 5050 for y = 1 to x
 5060 if l$(y) = usr$ then 5090
 5070 next y
+5072 rem ADDED 2026: release the lock on this path too.  5080 jumps over the
+5074 rem unlock at 5200, and this is the ORDINARY path -- no sorcerer message
+5076 rem waiting -- so the first player to run any command held
+5078 rem explore_com.lock for the rest of the session.
+5079 call "exp_unlock_": w9$ & ">explore_com.lock"
 5080 goto 5220
 5090 let l$(y) = "---*---"
 5100 print
@@ -1259,6 +1268,8 @@
 11370 for i = 1 to x
 11380 if c$(i) = usr$ then 11410
 11390 next i
+11394 rem ADDED 2026: release the lock on this path too (see 4548)
+11396 call "exp_unlock_": w9$ & ">explore_usr.lock"
 11400 goto 11480
 11410 let c$(i) = ""
 11420 scratch #2
@@ -2075,7 +2086,10 @@
 19110 print "Message";
 19120 linput y$
 19130 if len(y$) = 0 then 19110
-19140 if y1$ = "*" then 19180
+19140 if y1$ <> "*" then 19150 ' MODIFIED 2026: was "= ... then 19180", which
+19142 rem left explore_com.lock held for the rest of the session
+19144 call "exp_unlock_": w9$ & ">explore_com.lock"
+19146 goto 19180
 19150 print #2: y1$;","&""""&y$&""""
 19160 call "exp_unlock_": w9$ & ">explore_com.lock"
 19170 goto 9870
@@ -2314,7 +2328,10 @@
 21360 if x9 = 0 then 21350
 21370 print "Message";
 21380 linput q5$
-21390 if len(q5$) = 0 then 4950
+21390 if len(q5$) <> 0 then 21400 ' MODIFIED 2026: was "= 0 then 4950", which
+21392 rem left explore_usr_com.lock held for the rest of the session
+21394 call "exp_unlock_": w9$ & ">explore_usr_com.lock"
+21396 goto 4950
 21400 print #2: y$;",";usr$;","&""""&q5$&""""
 21410 call "exp_unlock_": w9$ & ">explore_usr_com.lock"
 21420 goto 4950
