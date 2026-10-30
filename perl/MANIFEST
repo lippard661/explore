@@ -28,3 +28,4 @@ t/11_args.t
 t/12_game_fixes.t
 t/13_manifest.t
 t/14_review3.t
+t/15_multip.t
