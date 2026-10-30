@@ -32,6 +32,26 @@ Revision history for Explore (Perl distribution)
        It now polls at 50ms for up to the same 2 seconds: with a lock
        deliberately left held, the waiting player went from 2097 ticks of CPU
        to 23.  This is a parity fix, not the deadlock fix.
+     - "mail" and "talk" take their lock AFTER the message text is typed
+       instead of before it.  Both used to lock and then prompt, so the lock
+       was held for as long as the sender took to type, and since every
+       player's commands read those files on every pass (explore_com at 4980,
+       explore_usr_com at 4740), one person sitting at a "Message" prompt
+       stalled the whole game.  "talk" is an ordinary player command, so any
+       player could do it; "mail" needs the sorcerer.  Each path now prompts,
+       locks, opens the file, writes and releases -- which also takes the
+       file snapshot inside the lock rather than outside it, since MBasic
+       reads the whole file at "file #" time.  A "*" broadcast keeps the lock
+       across its loop, because 19180-19220 writes explore_com for every
+       player, and 19190 now ends at the release rather than jumping past it.
+     - A sorcerer broadcast reaches the players again.  The loop that writes
+       one explore_com line per player read only four fields per
+       explore_usr row (19200), but a row has had six since the last-login
+       date and the active flag were added in 2026 -- 4540 and 4610 write
+       six, 4490 reads six.  Reading four drifted across row boundaries, so
+       after the first player the recipient name came out of the middle of a
+       row and nobody else received the message.  The 1980 rows did have four
+       fields, so this reader was missed when the registry grew.
 
 1.4  2026-10-09
      Fixes at the direction of Jim Lippard by Claude Opus 5.0, from a review
