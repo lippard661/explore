@@ -2096,7 +2096,10 @@
 19180 file #3: w9$ & ">explore_usr"
 19190 if end #3 then 19160 ' MODIFIED 2026: was 9870, which left the lock held
 19195 rem after a "*" broadcast; 19160 releases it, then 19170 goes to 9870.
-19200 input #3: y1$,y,y0,y1
+19200 input #3: y1$,y,y0,y1,z9$,z9 ' MODIFIED 2026: an explore_usr row has
+19205 rem SIX fields since the last-login date and the active flag were added
+19206 rem (see 4540 and 4610); reading only four drifted across row boundaries
+19207 rem and broadcast to invented recipients instead of to the players.
 19210 print #2: y1$;",";y$
 19220 goto 19190
 19230 rem *** move *** (Sorcerer Mode)
