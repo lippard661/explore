@@ -35,7 +35,8 @@ pairings, and the 500-point scoring.
 
 The Multics reconstruction can be found in the Multics subdirectory with
 its own README with instructions for setting it up on a Multics running
-on the DPS8 simulator.
+on the DPS8 simulator. (The game is also installed in >aml on Multics
+release MR12.9, November 2026.)
 
 To make the game also available on macOS, *BSD, and Linux, I've created
 a Multics Basic interpreter (see https://github.com/lippard661/MBasic)
